@@ -256,7 +256,7 @@ class Parser:
 
         if token.type in  (TOKEN_PLUS, TOKEN_MINUS):
             res.register(self.advance())
-            factor = res.register(self.advance())
+            factor = res.register(self.factor())
             if res.error: return res
             return res.success(UnaryOpNode(token, factor))
 
