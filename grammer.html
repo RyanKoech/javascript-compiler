@@ -1,0 +1,29 @@
+// Supported Language
+
+<arithmetic-expression> : <term> | <arithmetic-expression> <addop> <term>
+<term> ::= <factor> | <term> <mulop> <factor>
+<factor> ::= <number> | '(' <expression> ')' | <addop> <factor>
+<number> :: = <int>  | <float>
+<float> :: = /[+-]?[0-9]+(\.[0-9]+)?/
+<int> :: = /[+|-]?[0-9][0-9]*/
+<addop> ::= '+' | '-'
+<mulop> ::= '*' | '/'
+
+  
+// Target Language
+
+<program> ::= <statement> | <statement> <program>
+<statement> ::= <if-statement> | <while-loop> | <expression>
+<if-statement> ::= "if" "(" <expression> ")" "{" <program> "}" ["else" "{" <program> "}"]
+<while-loop> ::= "while" "(" <expression> ")" "{" <program> "}"
+<expression> ::= <logical-expression> | <assignment-expression>
+<assignment-expression> ::= <identifier> "=" <logical-expression>
+<logical-expression> ::= <equality-expression> | <equality-expression> "&&" <logical-expression> | <equality-expression> "||" <logical-expression>
+<equality-expression> ::= <relational-expression> | <relational-expression> "==" <equality-expression> | <relational-expression> "!=" <equality-expression>
+<relational-expression> ::= <additive-expression> | <additive-expression> "<" <relational-expression> | <additive-expression> ">" <relational-expression>
+<additive-expression> ::= <multiplicative-expression> | <multiplicative-expression> "+" <additive-expression> | <multiplicative-expression> "-" <additive-expression>
+<multiplicative-expression> ::= <primary-expression> | <primary-expression> "*" <multiplicative-expression> | <primary-expression> "/" <multiplicative-expression>
+<primary-expression> ::= <identifier> | <number> | <string> | "(" <expression> ")"
+<identifier> ::= /[a-zA-Z][a-zA-Z]*/
+<number> ::= /[+|-]?[0-9][0-9]*/
+<string> ::= /('[^']*'|"[^"]*")/
