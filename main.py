@@ -66,13 +66,13 @@ class Position:
 
 TOKEN_INT = 'TOKEN_INT'
 TOKEN_FLOAT = 'TOKEN_FLOAT'
-TOKEN_IDENTIFIER = 'IDENTIFIER'
-TOKEN_KEYWORD = 'KEYWORD'
+TOKEN_IDENTIFIER = 'TOKEN_IDENTIFIER'
+TOKEN_KEYWORD = 'TOKEN_KEYWORD'
 TOKEN_PLUS = 'TOKEN_PLUS'
 TOKEN_MINUS = 'TOKEN_MINUS'
 TOKEN_MUL = 'TOKEN_MUL'
 TOKEN_DIV = 'TOKEN_DIV'
-TOKEN_EQ = 'EQ'
+TOKEN_EQ = 'TOKEN_EQ'
 TOKEN_LPAREN = 'TOKEN_LPAREN'
 TOKEN_RPAREN = 'TOKEN_RPAREN'
 TOKEN_LCURL = 'TOKEN_LCURL'
@@ -213,6 +213,9 @@ class VarAccessNode:
         self.pos_start = self.var_name_token.pos_start
         self.pos_end = self.var_name_token.pos_end
 
+    def __repr__(self):
+        return f'{self.var_name_token}'
+
 class VarAssignNode:
     def __init__(self, var_name_token, value_node):
         self.var_name_token = var_name_token
@@ -220,6 +223,9 @@ class VarAssignNode:
 
         self.pos_start = self.var_name_token.pos_start
         self.pos_end = self.var_name_token.pos_end
+    
+    def __repr__(self):
+        return f'({self.var_name_token} {Token(TOKEN_EQ)} {self.value_node})'
     
 class BinOpNode:
     def __init__(self, left_node, op_token, right_node):
@@ -288,7 +294,6 @@ class Parser:
     def parse(self):
         res = self.expression()
         if not res.error and self.current_token.type is not TOKEN_EOF:
-            print(res.node)
             return res.failure(
                 InvalidSyntaxError(
                 self.current_token.pos_start, self.current_token.pos_end,
