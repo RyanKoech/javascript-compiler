@@ -315,122 +315,122 @@ class Parser:
     
     ###################################
 
-def if_expr(self):
-	res = ParseResult()
-	cases = []
-	else_case = None
-
-	if not self.current_tok.matches(TOKEN_KEYWORD, 'IF'):
-		return res.failure(InvalidSyntaxError(
-			self.current_tok.pos_start, self.current_tok.pos_end,
-			f"Expected 'IF'"
-		))
-
-	res.register_advancement()
-	self.advance()
-
-	condition = res.register(self.expr())
-	if res.error: return res
-
-	if self.current_tok.matches(TOKEN_KEYWORD, 'ELSE'):
-		res.register_advancement()
-		self.advance()
-
-	else_case = res.register(self.expr())
-	if res.error: return res
-
-	return res.success(IfNode(cases, else_case))
-    
-def factor(self):
+    def if_expr(self):
         res = ParseResult()
-        token = self.current_token
+        cases = []
+        else_case = None
 
-        if token.type in  (TOKEN_PLUS, TOKEN_MINUS):
-            res.register_advancement
-            self.advance()
-            factor = res.register(self.factor())
-            if res.error: return res
-            return res.success(UnaryOpNode(token, factor))
-        
-        elif token.type == TOKEN_IDENTIFIER:
-            res.register_advancement
-            self.advance()
-            return res.success(VarAccessNode(token))
-
-        elif  token.type in (TOKEN_INT, TOKEN_FLOAT):
-            res.register_advancement
-            self.advance()
-            return res.success(NumberNode(token))
-        
-        elif token.type == TOKEN_LPAREN:
-            res.register_advancement
-            self.advance()
-            expr = res.register(self.expression())
-            if res.error : return res
-            if self.current_token.type == TOKEN_RPAREN:
-                    res.register_advancement
-                    self.advance()
-                    return res.success(expr)
-            else:
-                return res.failure(
-                    InvalidSyntaxError(
-                        self.current_token.pos_start, self.current_token.pos_end,
-                        "Expected ')"
-                    )
-                )
-        
-        elif token.matches(TOKEN_KEYWORD, 'if'):
-            if_expr = res.register(self.if_expr())
-            if res.error: return res
-            return res.success(if_expr)
-        
-        return res.failure(
-            InvalidSyntaxError(token.pos_start, token.pos_end, "Expected number or identifier.")
-        )
-
-def term(self):
-        return self.binary_op(self.factor, (TOKEN_MUL, TOKEN_DIV))
-
-def expression(self):
-        res = ParseResult()
-
-        if self.current_token.matches(TOKEN_KEYWORD, 'let'):
-            res.register_advancement
-            self.advance()
-
-            if self.current_token.type != TOKEN_IDENTIFIER:
-                return res.failure(InvalidSyntaxError(
-                    self.current_token.pos_start, self.current_token.pos_end,
-                    "Expected identifier"
-                ))
-            
-            var_name = self.current_token
-            res.register_advancement
-            self.advance()
-
-            if self.current_token.type != TOKEN_EQ:
-                return res.failure(InvalidSyntaxError(
-                    self.current_token.pos_start, self.current_token.pos_end,
-                    "Expected '='"
-                ))
-            
-            res.register_advancement
-            self.advance()
-            expression = res.register(self.expression())
-            if res.error: return res
-            return res.success(VarAssignNode(var_name, expression))
-
-        node = res.register(self.binary_op(self.term, (TOKEN_PLUS, TOKEN_MINUS)))
-
-        if res.error: 
+        if not self.current_token.matches(TOKEN_KEYWORD, 'IF'):
             return res.failure(InvalidSyntaxError(
                 self.current_token.pos_start, self.current_token.pos_end,
-                "Expected let, number or identifier"
+                f"Expected 'IF'"
             ))
 
-        return res.success(node)
+        res.register_advancement()
+        self.advance()
 
-def binary_op(self, func, ops):
+        condition = res.register(self.expr())
+        if res.error: return res
+
+        if self.current_token.matches(TOKEN_KEYWORD, 'ELSE'):
+            res.register_advancement()
+            self.advance()
+
+        else_case = res.register(self.expr())
+        if res.error: return res
+
+        return res.success(IfNode(cases, else_case))
+        
+    def factor(self):
+            res = ParseResult()
+            token = self.current_token
+
+            if token.type in  (TOKEN_PLUS, TOKEN_MINUS):
+                res.register_advancement
+                self.advance()
+                factor = res.register(self.factor())
+                if res.error: return res
+                return res.success(UnaryOpNode(token, factor))
+            
+            elif token.type == TOKEN_IDENTIFIER:
+                res.register_advancement
+                self.advance()
+                return res.success(VarAccessNode(token))
+
+            elif  token.type in (TOKEN_INT, TOKEN_FLOAT):
+                res.register_advancement
+                self.advance()
+                return res.success(NumberNode(token))
+            
+            elif token.type == TOKEN_LPAREN:
+                res.register_advancement
+                self.advance()
+                expr = res.register(self.expression())
+                if res.error : return res
+                if self.current_token.type == TOKEN_RPAREN:
+                        res.register_advancement
+                        self.advance()
+                        return res.success(expr)
+                else:
+                    return res.failure(
+                        InvalidSyntaxError(
+                            self.current_token.pos_start, self.current_token.pos_end,
+                            "Expected ')"
+                        )
+                    )
+            
+            elif token.matches(TOKEN_KEYWORD, 'if'):
+                if_expr = res.register(self.if_expr())
+                if res.error: return res
+                return res.success(if_expr)
+            
+            return res.failure(
+                InvalidSyntaxError(token.pos_start, token.pos_end, "Expected number or identifier.")
+            )
+
+    def term(self):
+            return self.binary_op(self.factor, (TOKEN_MUL, TOKEN_DIV))
+
+    def expression(self):
+            res = ParseResult()
+
+            if self.current_token.matches(TOKEN_KEYWORD, 'let'):
+                res.register_advancement
+                self.advance()
+
+                if self.current_token.type != TOKEN_IDENTIFIER:
+                    return res.failure(InvalidSyntaxError(
+                        self.current_token.pos_start, self.current_token.pos_end,
+                        "Expected identifier"
+                    ))
+                
+                var_name = self.current_token
+                res.register_advancement
+                self.advance()
+
+                if self.current_token.type != TOKEN_EQ:
+                    return res.failure(InvalidSyntaxError(
+                        self.current_token.pos_start, self.current_token.pos_end,
+                        "Expected '='"
+                    ))
+                
+                res.register_advancement
+                self.advance()
+                expression = res.register(self.expression())
+                if res.error: return res
+                return res.success(VarAssignNode(var_name, expression))
+
+            node = res.register(self.binary_op(self.term, (TOKEN_PLUS, TOKEN_MINUS)))
+
+            if res.error: 
+                return res.failure(InvalidSyntaxError(
+                    self.current_token.pos_start, self.current_token.pos_end,
+                    "Expected let, number or identifier"
+                ))
+
+            return res.success(node)
+
+    def binary_op(self, func, ops):
         res = ParseResult()
         left = res.register(func())
         if res.error: return res
