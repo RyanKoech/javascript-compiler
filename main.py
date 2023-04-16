@@ -80,7 +80,9 @@ TOKEN_RCURL = 'TOKEN_RCURL'
 TOKEN_EOF = 'TOKEN_EOF'
 
 KEYWORDS = [
-    'let'
+    'let',
+    'if',
+    'else'
 ]
 
 class Token:
@@ -247,6 +249,14 @@ class UnaryOpNode:
     
     def __repr__(self):
         return f'({self.op_token}, {self.node})'
+    
+class IfNode:
+	def __init__(self, cases, else_case):
+		self.cases = cases
+		self.else_case = else_case
+
+		self.pos_start = self.cases[0][0].pos_start
+		self.pos_end = (self.else_case or self.cases[len(self.cases) - 1][0]).pos_end
 
 #######################################
 # PARSE RESULT
@@ -303,7 +313,35 @@ class Parser:
     
         return res
     
-    def factor(self):
+    ###################################
+
+def if_expr(self):
+	res = ParseResult()
+	cases = []
+	else_case = None
+
+	if not self.current_tok.matches(TOKEN_KEYWORD, 'IF'):
+		return res.failure(InvalidSyntaxError(
+			self.current_tok.pos_start, self.current_tok.pos_end,
+			f"Expected 'IF'"
+		))
+
+	res.register_advancement()
+	self.advance()
+
+	condition = res.register(self.expr())
+	if res.error: return res
+
+	if self.current_tok.matches(TOKEN_KEYWORD, 'ELSE'):
+		res.register_advancement()
+		self.advance()
+
+	else_case = res.register(self.expr())
+	if res.error: return res
+
+	return res.success(IfNode(cases, else_case))
+    
+def factor(self):
         res = ParseResult()
         token = self.current_token
 
@@ -341,14 +379,19 @@ class Parser:
                     )
                 )
         
+        elif token.matches(TOKEN_KEYWORD, 'if'):
+            if_expr = res.register(self.if_expr())
+            if res.error: return res
+            return res.success(if_expr)
+        
         return res.failure(
             InvalidSyntaxError(token.pos_start, token.pos_end, "Expected number or identifier.")
         )
 
-    def term(self):
+def term(self):
         return self.binary_op(self.factor, (TOKEN_MUL, TOKEN_DIV))
 
-    def expression(self):
+def expression(self):
         res = ParseResult()
 
         if self.current_token.matches(TOKEN_KEYWORD, 'let'):
@@ -387,7 +430,7 @@ class Parser:
 
         return res.success(node)
 
-    def binary_op(self, func, ops):
+def binary_op(self, func, ops):
         res = ParseResult()
         left = res.register(func())
         if res.error: return res
