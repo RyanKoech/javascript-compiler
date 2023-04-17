@@ -320,10 +320,10 @@ class Parser:
         cases = []
         else_case = None
 
-        if not self.current_token.matches(TOKEN_KEYWORD, 'IF'):
+        if not self.current_token.matches(TOKEN_KEYWORD, 'if'):
             return res.failure(InvalidSyntaxError(
                 self.current_token.pos_start, self.current_token.pos_end,
-                f"Expected 'IF'"
+                f"Expected 'if'"
             ))
 
         res.register_advancement()
@@ -332,7 +332,7 @@ class Parser:
         condition = res.register(self.expr())
         if res.error: return res
 
-        if self.current_token.matches(TOKEN_KEYWORD, 'ELSE'):
+        if self.current_token.matches(TOKEN_KEYWORD, 'else'):
             res.register_advancement()
             self.advance()
 
