@@ -32,6 +32,10 @@ class IllegalCharError(Error):
     def __init__(self, pos_start, pos_end, details):
         super().__init__(pos_start, pos_end, 'Illegal Character', details)
 
+class ExpectedCharError(Error):
+    def __init__(self, pos_start, pos_end, details):
+        super().__init__(pos_start, pos_end, 'Expected Character', details)
+
 class InvalidSyntaxError(Error):
     def __init__(self, pos_start, pos_end, details):
         super().__init__(pos_start, pos_end, 'Invalid Syntax', details)
@@ -75,12 +79,21 @@ TOKEN_DIV = 'TOKEN_DIV'
 TOKEN_EQ = 'TOKEN_EQ'
 TOKEN_LPAREN = 'TOKEN_LPAREN'
 TOKEN_RPAREN = 'TOKEN_RPAREN'
+TOKEN_EE = 'TOKEN_EE'
+TOKEN_NE = 'TOKEN_NE'
+TOKEN_LT = 'TOKEN_LT'
+TOKEN_GT = 'TOKEN_GT'
+TOKEN_LTE = 'TOKEN_LTE'
+TOKEN_GTE = 'TOKEN_GTE'
 TOKEN_LCURL = 'TOKEN_LCURL'
 TOKEN_RCURL = 'TOKEN_RCURL'
 TOKEN_EOF = 'TOKEN_EOF'
 
 KEYWORDS = [
     'let',
+    '&&',
+    '||',
+    '!'
     'if',
     'else'
 ]
@@ -141,9 +154,6 @@ class Lexer:
             elif self.current_char == '/':
                 tokens.append(Token(TOKEN_DIV, pos_start=self.pos))
                 self.advance()
-            elif self.current_char == '=':
-                tokens.append(Token(TOKEN_EQ, pos_start=self.pos))
-                self.advance()
             elif self.current_char == '(':
                 tokens.append(Token(TOKEN_LPAREN, pos_start=self.pos))
                 self.advance()
@@ -156,6 +166,16 @@ class Lexer:
             elif self.current_char == '}':
                 tokens.append(Token(TOKEN_RCURL, pos_start=self.pos))
                 self.advance()
+            elif self.current_char == '!':
+                token, error = self.make_not_equals()
+                if error: return [], error
+                tokens.append(token)
+            elif self.current_char == '=':
+                tokens.append(self.make_equals())
+            elif self.current_char == '<':
+                tokens.append(self.make_less_than())
+            elif self.current_char == '>':
+                tokens.append(self.make_greater_than())
             else:
                 pos_start = self.pos.copy()
                 char = self.current_char
@@ -192,8 +212,63 @@ class Lexer:
             id_str += self.current_char
             self.advance()
 
-        tok_type = TOKEN_KEYWORD if id_str in KEYWORDS else TOKEN_IDENTIFIER
-        return Token(tok_type, id_str, pos_start, self.pos)
+        token_type = TOKEN_KEYWORD if id_str in KEYWORDS else TOKEN_IDENTIFIER
+        return Token(token_type, id_str, pos_start, self.pos)
+    
+    def make_not_equals(self):
+        pos_start = self.pos.copy()
+        self.advance()
+
+        if self.current_char == '=':
+            self.advance()
+            return Token(TOKEN_NE, pos_start=pos_start, pos_end=self.pos), None
+        
+        self.advance()
+        return None, ExpectedCharError(pos_start, self.pos, "'=' (after '!')")
+        
+    def make_equals(self):
+        token_type = TOKEN_EQ
+        pos_start = self.pos.copy()
+        self.advance()
+
+        if self.current_char == '=':
+            self.advance()
+            token_type = TOKEN_EE
+
+        return Token(token_type, pos_start=pos_start, pos_end=self.pos)
+    
+    def make_less_than(self):
+        token_type = TOKEN_EQ
+        pos_start = self.pos.copy()
+        self.advance()
+
+        if self.current_char == '=':
+            self.advance()
+            token_type = TOKEN_EE
+
+        return Token(token_type, pos_start=pos_start, pos_end=self.pos)
+    
+    def make_less_than(self):
+        token_type = TOKEN_LT
+        pos_start = self.pos.copy()
+        self.advance()
+
+        if self.current_char == '=':
+            self.advance()
+            token_type = TOKEN_LTE
+
+        return Token(token_type, pos_start=pos_start, pos_end=self.pos)
+    
+    def make_greater_than(self):
+        token_type = TOKEN_GT
+        pos_start = self.pos.copy()
+        self.advance()
+
+        if self.current_char == '=':
+            self.advance()
+            token_type = TOKEN_GTE
+
+        return Token(token_type, pos_start=pos_start, pos_end=self.pos)
 
 ##################################################
 # NODES
@@ -390,6 +465,32 @@ class Parser:
 
     def term(self):
             return self.binary_op(self.factor, (TOKEN_MUL, TOKEN_DIV))
+    
+    def arith_expression(self):
+        return self.binary_op(self.term, (TOKEN_PLUS, TOKEN_MINUS))
+    
+    def comp_expression(self):
+        res = ParseResult()
+
+        if self.current_token.matches(TOKEN_KEYWORD, '!'):
+            op_token = self.current_token
+            res.register_advancement()
+            self.advance()
+
+            node = res.register(self.comp_expression())
+            if res.error: return res
+            return res.success(UnaryOpNode(op_token,node))
+        
+        node = res.register(self.binary_op(self.arith_expression, (TOKEN_EE, TOKEN_NE, TOKEN_LT, TOKEN_GT, TOKEN_LTE, TOKEN_GTE)))
+
+        if res.error:
+            return res.failure(InvalidSyntaxError(
+                self.current_token.pos_start, self.current_token.pos_end,
+                "Expected int, float, identifier, '+', '-', '(' or '!'"
+            ))
+        
+        return res.success(node)
+
 
     def expression(self):
             res = ParseResult()
@@ -420,7 +521,7 @@ class Parser:
                 if res.error: return res
                 return res.success(VarAssignNode(var_name, expression))
 
-            node = res.register(self.binary_op(self.term, (TOKEN_PLUS, TOKEN_MINUS)))
+            node = res.register(self.binary_op(self.comp_expression, ((TOKEN_KEYWORD,'&&'), (TOKEN_KEYWORD,'||'))))
 
             if res.error: 
                 return res.failure(InvalidSyntaxError(
@@ -477,6 +578,7 @@ def run(file_name, text):
 
     if error : return None , error
 
+    print(tokens)
     # Generate AST
     parser  = Parser(tokens)
     ast = parser.parse()
