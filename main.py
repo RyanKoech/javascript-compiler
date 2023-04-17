@@ -87,6 +87,9 @@ TOKEN_LTE = 'TOKEN_LTE'
 TOKEN_GTE = 'TOKEN_GTE'
 TOKEN_LCURL = 'TOKEN_LCURL'
 TOKEN_RCURL = 'TOKEN_RCURL'
+TOKEN_NOT = 'TOKEN_NOT'
+TOKEN_AND = 'TOKEN_AND'
+TOKEN_OR = 'TOKEN_OR'
 TOKEN_EOF = 'TOKEN_EOF'
 
 KEYWORDS = [
@@ -170,6 +173,14 @@ class Lexer:
                 token, error = self.make_not_equals()
                 if error: return [], error
                 tokens.append(token)
+            elif self.current_char == '&':
+                token, error = self.make_and()
+                if error: return [], error
+                tokens.append(token)
+            elif self.current_char == '|':
+                token, error = self.make_or()
+                if error: return [], error
+                tokens.append(token)
             elif self.current_char == '=':
                 tokens.append(self.make_equals())
             elif self.current_char == '<':
@@ -214,6 +225,29 @@ class Lexer:
 
         token_type = TOKEN_KEYWORD if id_str in KEYWORDS else TOKEN_IDENTIFIER
         return Token(token_type, id_str, pos_start, self.pos)
+
+    def make_or(self):
+        pos_start = self.pos.copy()
+        self.advance()
+
+        if self.current_char == '|':
+            self.advance()
+            return Token(TOKEN_OR, pos_start=pos_start, pos_end=self.pos), None
+
+        self.advance()
+        return None, ExpectedCharError(pos_start, self.pos, "'|' (after '|')")
+    
+    def make_and(self):
+        pos_start = self.pos.copy()
+        self.advance()
+
+        if self.current_char == '&':
+            self.advance()
+            return Token(TOKEN_AND, pos_start=pos_start, pos_end=self.pos), None
+
+        self.advance()
+        return None, ExpectedCharError(pos_start, self.pos, "'&' (after '&')")
+        
     
     def make_not_equals(self):
         pos_start = self.pos.copy()
@@ -222,9 +256,8 @@ class Lexer:
         if self.current_char == '=':
             self.advance()
             return Token(TOKEN_NE, pos_start=pos_start, pos_end=self.pos), None
-        
-        self.advance()
-        return None, ExpectedCharError(pos_start, self.pos, "'=' (after '!')")
+
+        return Token(TOKEN_NOT, pos_start=pos_start, pos_end=self.pos), None
         
     def make_equals(self):
         token_type = TOKEN_EQ
@@ -472,7 +505,7 @@ class Parser:
     def comp_expression(self):
         res = ParseResult()
 
-        if self.current_token.matches(TOKEN_KEYWORD, '!'):
+        if self.current_token.type == TOKEN_NOT:
             op_token = self.current_token
             res.register_advancement()
             self.advance()
@@ -521,7 +554,10 @@ class Parser:
                 if res.error: return res
                 return res.success(VarAssignNode(var_name, expression))
 
-            node = res.register(self.binary_op(self.comp_expression, ((TOKEN_KEYWORD,'&&'), (TOKEN_KEYWORD,'||'))))
+            node = res.register(self.binary_op(
+                self.comp_expression, 
+                ((TOKEN_AND), (TOKEN_OR))
+                ))
 
             if res.error: 
                 return res.failure(InvalidSyntaxError(
@@ -531,15 +567,19 @@ class Parser:
 
             return res.success(node)
 
-    def binary_op(self, func, ops):
+    def binary_op(self, func_a, ops, func_b=None):
+
+        if func_b == None:
+            func_b = func_a
+
         res = ParseResult()
-        left = res.register(func())
+        left = res.register(func_a())
         if res.error: return res
         while self.current_token.type in ops:
             op_token = self.current_token
             res.register_advancement
             self.advance()
-            right = res.register(func())
+            right = res.register(func_b())
             if res.error: return res
             left = BinOpNode(left, op_token, right)
         return res.success(left)
