@@ -1,10 +1,11 @@
 // Supported Language
  
-<assignment-expression> ::= <keyword> <identifier> "=" <arithmetic-expression> |  <comparative-expression> <logical-operator> <comparative-expression>
+<expression> ::= <keyword> <identifier> "=" <arithmetic-expression> |  <comparative-expression> <logical-operator> <comparative-expression>
 <comparative-expression> ::= ! <comparative-expression> | <arithmetic-expression> <comparative-operator> <arithmetic-expression>
 <arithmetic-expression> ::= <term> | <arithmetic-expression> <addop> <term>
 <term> ::= <factor> | <term> <mulop> <factor>
-<factor> ::= <number> | '(' <expression> ')' | <addop> <factor> | <identifier>
+<factor> ::= <number> | '(' <expression> ')' | <addop> <factor> | <identifier> | <if-expression>
+<if-expression> ::= 'if' '(' <expression> ')' '{' <expression> '}' | 'if' '(' <expression> ')' '{' <expression> '}' 'else''{' <expression> '}' 
 <number> ::= <int>  | <float>
 <keyword> ::= 'let'
 <comparative-operator> ::= '==' | '!=' | '<' | '>' | '<=' | '>='

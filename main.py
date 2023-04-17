@@ -94,9 +94,6 @@ TOKEN_EOF = 'TOKEN_EOF'
 
 KEYWORDS = [
     'let',
-    '&&',
-    '||',
-    '!'
     'if',
     'else'
 ]
@@ -361,10 +358,17 @@ class UnaryOpNode:
 class IfNode:
 	def __init__(self, cases, else_case):
 		self.cases = cases
+		self.if_token = Token(TOKEN_KEYWORD, 'if')
+		self.else_token = Token(TOKEN_KEYWORD, 'else')
 		self.else_case = else_case
-
+			
 		self.pos_start = self.cases[0][0].pos_start
 		self.pos_end = (self.else_case or self.cases[len(self.cases) - 1][0]).pos_end
+    
+	def __repr__(self):
+		if self.else_case: 
+			return f'{self.if_token} {TOKEN_LCURL} {self.cases[0]} {TOKEN_RCURL} {self.else_token}  {TOKEN_LCURL} {self.else_case} {TOKEN_RCURL}'
+		return f'{self.if_token} {TOKEN_LCURL} {self.cases[0]} {TOKEN_RCURL}'
 
 #######################################
 # PARSE RESULT
@@ -436,53 +440,77 @@ class Parser:
         
         res.register_advancement()
         self.advance()
-        
-        condition = res.register(self.expr())
+
+        if self.current_token.type != TOKEN_LPAREN:
+            return res.failure(InvalidSyntaxError(
+                self.current_token.pos_start, self.current_token.pos_end,
+                f"Expected opening '('"
+            ))
+		        
+        res.register_advancement()
+        self.advance()
+
+        condition = res.register(self.expression())
         if res.error: return res
         
-        if not self.current_token.matches(TOKEN_KEYWORD, '{'):
+
+        if self.current_token.type != TOKEN_RPAREN:
+            return res.failure(InvalidSyntaxError(
+                self.current_token.pos_start, self.current_token.pos_end,
+                f"Expected opening ')'"
+            ))
+                
+        res.register_advancement()
+        self.advance()
+
+        
+        if self.current_token.type != TOKEN_LCURL:
             return res.failure(InvalidSyntaxError(
 				self.current_token.pos_start, self.current_token.pos_end,
-				f"Expected opening calibraces"
+				f"Expected opening {'{'}"
 			))
         
         res.register_advancement()
         self.advance()
         
-        
-        expr = res.register(self.expr())
+        expr = res.register(self.expression())
         if res.error: return res
         cases.append((condition, expr))
         
-        while self.current_token.matches(TOKEN_KEYWORD, 'ELIF'):
+        if self.current_token.type != TOKEN_RCURL:
+            return res.failure(InvalidSyntaxError(
+				self.current_token.pos_start, self.current_token.pos_end,
+				f"Expected opening {'}'}"
+			))
+        
+        res.register_advancement()
+        self.advance()
+            
+        if self.current_token.matches(TOKEN_KEYWORD, 'else'):
             res.register_advancement()
             self.advance()
             
-            
-            condition = res.register(self.expr())
-            if res.error: return res
-            
-            if not self.current_token.matches(TOKEN_KEYWORD, '}'):
+            if self.current_token.type != TOKEN_LCURL:
                 return res.failure(InvalidSyntaxError(
 					self.current_token.pos_start, self.current_token.pos_end,
-					f"Expected closing calibraces"
+					f"Expected opening {'{'}"
 				))
-            
             res.register_advancement()
             self.advance()
-            
-            expr = res.register(self.expr())
-            if res.error: return res
-            cases.append((condition, expr))
-            
-            if self.current_token.matches(TOKEN_KEYWORD, 'else'):
-                res.register_advancement()
-                self.advance()
 
-                else_case = res.register(self.expr())
-                if res.error: return res
+            else_case = res.register(self.expression())
+            if res.error: return res
+            
+            if self.current_token.type != TOKEN_RCURL:
+                return res.failure(InvalidSyntaxError(
+					self.current_token.pos_start, self.current_token.pos_end,
+					f"Expected opening {'}'}"
+				))
+            res.register_advancement()
+            self.advance()      
+        
                 
-            return res.success(IfNode(cases, else_case))
+        return res.success(IfNode(cases, else_case))
 
         
     def factor(self):
@@ -654,7 +682,7 @@ def run(file_name, text):
 
     if error : return None , error
 
-    print(tokens)
+    # print(tokens)
     # Generate AST
     parser  = Parser(tokens)
     ast = parser.parse()
