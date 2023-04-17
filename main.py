@@ -427,27 +427,63 @@ class Parser:
         res = ParseResult()
         cases = []
         else_case = None
-
+        
         if not self.current_token.matches(TOKEN_KEYWORD, 'if'):
             return res.failure(InvalidSyntaxError(
-                self.current_token.pos_start, self.current_token.pos_end,
-                f"Expected 'if'"
-            ))
-
+				self.current_token.pos_start, self.current_token.pos_end,
+				f"Expected 'if'"
+			))
+        
         res.register_advancement()
         self.advance()
-
+        
         condition = res.register(self.expr())
         if res.error: return res
-
-        if self.current_token.matches(TOKEN_KEYWORD, 'else'):
+        
+        if not self.current_token.matches(TOKEN_KEYWORD, '{'):
+            return res.failure(InvalidSyntaxError(
+				self.current_token.pos_start, self.current_token.pos_end,
+				f"Expected opening calibraces"
+			))
+        
+        res.register_advancement()
+        self.advance()
+        
+        
+        expr = res.register(self.expr())
+        if res.error: return res
+        cases.append((condition, expr))
+        
+        while self.current_token.matches(TOKEN_KEYWORD, 'ELIF'):
             res.register_advancement()
             self.advance()
+            
+            
+            condition = res.register(self.expr())
+            if res.error: return res
+            
+            if not self.current_token.matches(TOKEN_KEYWORD, '}'):
+                return res.failure(InvalidSyntaxError(
+					self.current_token.pos_start, self.current_token.pos_end,
+					f"Expected closing calibraces"
+				))
+            
+            res.register_advancement()
+            self.advance()
+            
+            expr = res.register(self.expr())
+            if res.error: return res
+            cases.append((condition, expr))
+            
+            if self.current_token.matches(TOKEN_KEYWORD, 'else'):
+                res.register_advancement()
+                self.advance()
 
-        else_case = res.register(self.expr())
-        if res.error: return res
+                else_case = res.register(self.expr())
+                if res.error: return res
+                
+            return res.success(IfNode(cases, else_case))
 
-        return res.success(IfNode(cases, else_case))
         
     def factor(self):
             res = ParseResult()
