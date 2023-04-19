@@ -94,8 +94,11 @@ TOKEN_EOF = 'TOKEN_EOF'
 
 KEYWORDS = [
     'let',
+    'step',
     'if',
-    'else'
+    'else',
+    'for',
+    'while'
 ]
 
 class Token:
@@ -370,6 +373,27 @@ class IfNode:
 			return f'{self.if_token} {TOKEN_LCURL} {self.cases[0]} {TOKEN_RCURL} {self.else_token}  {TOKEN_LCURL} {self.else_case} {TOKEN_RCURL}'
 		return f'{self.if_token} {TOKEN_LCURL} {self.cases[0]} {TOKEN_RCURL}'
 
+class ForNode:
+    def __init__(self, var_value_node, start_value_node, end_value_node, step_value_node, body_node):
+        self.var_value_node = var_value_node
+        self.start_value_node = start_value_node
+        self.end_value_node = end_value_node
+        self.step_value_node = step_value_node
+        self.body_node = body_node
+        
+        self.pos_start = self.var_name_token.pos_start
+        self.pos_end = self.body_node.pos_end
+        
+class WhileNode:
+    def __init__(self, condition_node, body_node):
+        self.while_token = Token(TOKEN_KEYWORD, 'while')
+        self.condition_node = condition_node
+        self.body_node = body_node
+        
+        self.pos_start = self.condition_node.pos_start
+        self.pos_end = self.body_node.pos_end       
+
+
 #######################################
 # PARSE RESULT
 #######################################
@@ -512,6 +536,164 @@ class Parser:
                 
         return res.success(IfNode(cases, else_case))
 
+    def for_expr(self):
+        res = ParseResult()
+        
+        if not self.current_token(TOKEN_KEYWORD, 'for'):
+            return res.failure(InvalidSyntaxError(
+				self.current_token.pos_start, self.current_token.pos_end,
+				"Expected 'for'"
+			))
+        
+        res.register_advancement()
+        self.advance()
+
+        if self.current_token.type != TOKEN_LPAREN:
+            return res.failure(InvalidSyntaxError(
+                self.current_token.pos_start, self.current_token.pos_end,
+                "Expected opening '('"
+            ))
+		        
+        res.register_advancement()
+        self.advance()
+
+        if self.current_token.matches(TOKEN_KEYWORD, 'let'):
+            return res.failure(InvalidSyntaxError(
+				self.current_token.pos_start, self.current_token.pos_end,
+				"Expected 'let'"
+			))
+        
+        res.register_advancement()
+        self.advance()
+        
+        if self.current_token.type != TOKEN_IDENTIFIER:
+            return res.failure(InvalidSyntaxError(
+                self.current_token.pos_start, self.current_token.pos_end,
+                "Expected identifier"
+            ))
+		
+        var_name = self.current_token  
+        res.register_advancement()
+        self.advance()
+        
+        if self.current_token.type != TOKEN_EQ:
+            return res.failure(InvalidSyntaxError(
+				self.current_token.pos_start, self.current_token.pos_end,
+				"Expected '='"
+			))
+            
+        res.register_advancement()
+        self.advance()
+        
+        start_value = res.register(self.expr())  
+        if res.error: return res
+        res.register_advancement()
+        self.advance()
+        
+        end_value = res.register(self.expr())  
+        if res.error: return res
+        res.register_advancement()
+        self.advance()
+        
+        if self.current_token.matches(TOKEN_KEYWORD, 'step'):
+            return res.failure(InvalidSyntaxError(
+				self.current_token.pos_start, self.current_token.pos_end,
+				"Expected 'step'"
+			))
+            
+            step_value = res.register(self.expr())  
+            if res.error: return res
+        else:
+            step_value = None
+        
+        res.register_advancement()
+        self.advance()
+        
+        if self.current_token.type != TOKEN_RPAREN:
+            return res.failure(InvalidSyntaxError(
+                self.current_token.pos_start, self.current_token.pos_end,
+                "Expected opening ')'"
+            ))
+                
+        res.register_advancement()
+        self.advance()
+        
+        if self.current_token.type != TOKEN_LCURL:
+                return res.failure(InvalidSyntaxError(
+					self.current_token.pos_start, self.current_token.pos_end,
+					f"Expected opening {'{'}"
+				))
+            
+        res.register_advancement()
+        self.advance()
+            
+        body = res.register(self.expr())
+        if  res.error: return res
+            
+        if self.current_token.type != TOKEN_RCURL:
+                return res.failure(InvalidSyntaxError(
+					self.current_token.pos_start, self.current_token.pos_end,
+					f"Expected opening {'}'}"
+				))
+        res.register_advancement()
+        self.advance()
+            
+        return res.success(ForNode(var_name, start_value, end_value, step_value, body))
+        
+    def while_expr(self):
+        res = ParseResult()
+        
+        if self.current_token.matches(TOKEN_KEYWORD, 'while'):
+            return res.failure(InvalidSyntaxError(
+				self.current_token.pos_start, self.current_token.pos_end,
+				"Expected 'while'"
+			))
+        
+        res.register_advancement()
+        self.advance()
+        
+        if self.current_token.type != TOKEN_LPAREN:
+            return res.failure(InvalidSyntaxError(
+                self.current_token.pos_start, self.current_token.pos_end,
+                "Expected opening '('"
+            ))
+		        
+        res.register_advancement()
+        self.advance()
+        
+        condition = res.register(self.expr())
+        if res.error: return res
+        
+        if self.current_token.type != TOKEN_RPAREN:
+            return res.failure(InvalidSyntaxError(
+                self.current_token.pos_start, self.current_token.pos_end,
+                "Expected opening ')'"
+            ))
+                
+        res.register_advancement()
+        self.advance()
+        
+        if self.current_token.type != TOKEN_LCURL:
+                return res.failure(InvalidSyntaxError(
+					self.current_token.pos_start, self.current_token.pos_end,
+					f"Expected opening {'{'}"
+				))
+            
+        res.register_advancement()
+        self.advance()
+        
+        body = res.register(self.expr())
+        if  res.error: return res
+            
+        if self.current_token.type != TOKEN_RCURL:
+                return res.failure(InvalidSyntaxError(
+					self.current_token.pos_start, self.current_token.pos_end,
+					f"Expected opening {'}'}"
+				))
+        res.register_advancement()
+        self.advance()
+        
+        return res.success(WhileNode(condition, body))
         
     def factor(self):
             res = ParseResult()
@@ -555,6 +737,16 @@ class Parser:
                 if_expr = res.register(self.if_expr())
                 if res.error: return res
                 return res.success(if_expr)
+            
+            elif token.matches(TOKEN_KEYWORD, 'for'):
+                for_expr = res.register(self.for_expr())
+                if res.error: return res
+                return res.success(for_expr)
+            
+            elif token.matches(TOKEN_KEYWORD, 'while'):
+                while_expr = res.register(self.while_expr())
+                if res.error: return res
+                return res.success(while_expr)
             
             return res.failure(
                 InvalidSyntaxError(token.pos_start, token.pos_end, "Expected number or identifier.")
