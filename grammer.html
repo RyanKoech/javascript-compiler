@@ -6,7 +6,6 @@
 <term> ::= <factor> | <term> <mulop> <factor>
 <factor> ::= <number> | '(' <expression> ')' | <addop> <factor> | <identifier> | <if-expression>
 <if-expression> ::= 'if' '(' <expression> ')' '{' <expression> '}' | 'if' '(' <expression> ')' '{' <expression> '}' 'else''{' <expression> '}' 
-<for-statement> ::= 'for' '(' <keyword> <expression> <expression> <expression> ')' '{' <expression> '}'
 <while-statement> ::= 'while' '(' <expression> ')' '{' <expression> '}'
 <number> ::= <int>  | <float>
 <keyword> ::= 'let'

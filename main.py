@@ -94,10 +94,8 @@ TOKEN_EOF = 'TOKEN_EOF'
 
 KEYWORDS = [
     'let',
-    'step',
     'if',
     'else',
-    'for',
     'while'
 ]
 
@@ -875,7 +873,7 @@ def run(file_name, text):
 
     if error : return None , error
 
-    print(tokens)
+    #print(tokens)
     # Generate AST
     parser  = Parser(tokens)
     ast = parser.parse()
