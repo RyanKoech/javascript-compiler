@@ -391,7 +391,10 @@ class WhileNode:
         self.body_node = body_node
         
         self.pos_start = self.condition_node.pos_start
-        self.pos_end = self.body_node.pos_end       
+        self.pos_end = self.body_node.pos_end
+
+    def __repr__(self):
+        return f'({self.while_token} {TOKEN_LPAREN} {self.condition_node} {TOKEN_RPAREN} {TOKEN_LCURL} {self.body_node} {TOKEN_RCURL})'     
 
 
 #######################################
@@ -539,10 +542,10 @@ class Parser:
     def for_expr(self):
         res = ParseResult()
         
-        if not self.current_token(TOKEN_KEYWORD, 'for'):
+        if not self.current_token.matches(TOKEN_KEYWORD, 'for'):
             return res.failure(InvalidSyntaxError(
 				self.current_token.pos_start, self.current_token.pos_end,
-				"Expected 'for'"
+				f"Expected {'for'}"
 			))
         
         res.register_advancement()
@@ -551,16 +554,16 @@ class Parser:
         if self.current_token.type != TOKEN_LPAREN:
             return res.failure(InvalidSyntaxError(
                 self.current_token.pos_start, self.current_token.pos_end,
-                "Expected opening '('"
+                f"Expected opening {'('}"
             ))
 		        
         res.register_advancement()
         self.advance()
 
-        if self.current_token.matches(TOKEN_KEYWORD, 'let'):
+        if not self.current_token.matches(TOKEN_KEYWORD, 'let'):
             return res.failure(InvalidSyntaxError(
 				self.current_token.pos_start, self.current_token.pos_end,
-				"Expected 'let'"
+				f"Expected {'let'}"
 			))
         
         res.register_advancement()
@@ -569,7 +572,7 @@ class Parser:
         if self.current_token.type != TOKEN_IDENTIFIER:
             return res.failure(InvalidSyntaxError(
                 self.current_token.pos_start, self.current_token.pos_end,
-                "Expected identifier"
+                f"Expected identifier"
             ))
 		
         var_name = self.current_token  
@@ -579,32 +582,30 @@ class Parser:
         if self.current_token.type != TOKEN_EQ:
             return res.failure(InvalidSyntaxError(
 				self.current_token.pos_start, self.current_token.pos_end,
-				"Expected '='"
+				f"Expected {'='}"
 			))
             
         res.register_advancement()
         self.advance()
         
-        start_value = res.register(self.expr())  
+        start_value = res.register(self.expression())  
         if res.error: return res
         res.register_advancement()
         self.advance()
         
-        end_value = res.register(self.expr())  
+        end_value = res.register(self.comp_expression())  
         if res.error: return res
         res.register_advancement()
         self.advance()
         
-        if self.current_token.matches(TOKEN_KEYWORD, 'step'):
-            return res.failure(InvalidSyntaxError(
-				self.current_token.pos_start, self.current_token.pos_end,
-				"Expected 'step'"
-			))
+        ##if self.current_token.matches(TOKEN_KEYWORD, 'step'):
+           ## return res.failure(InvalidSyntaxError(
+				##self.current_token.pos_start, self.current_token.pos_end,
+				##"Expected 'step'"
+			##))
             
-            step_value = res.register(self.expr())  
-            if res.error: return res
-        else:
-            step_value = None
+        step_value = res.register(self.expression())  
+        if res.error: return res
         
         res.register_advancement()
         self.advance()
@@ -627,7 +628,7 @@ class Parser:
         res.register_advancement()
         self.advance()
             
-        body = res.register(self.expr())
+        body = res.register(self.expression())
         if  res.error: return res
             
         if self.current_token.type != TOKEN_RCURL:
@@ -643,7 +644,7 @@ class Parser:
     def while_expr(self):
         res = ParseResult()
         
-        if self.current_token.matches(TOKEN_KEYWORD, 'while'):
+        if not self.current_token.matches(TOKEN_KEYWORD, 'while'):
             return res.failure(InvalidSyntaxError(
 				self.current_token.pos_start, self.current_token.pos_end,
 				"Expected 'while'"
@@ -661,13 +662,13 @@ class Parser:
         res.register_advancement()
         self.advance()
         
-        condition = res.register(self.expr())
+        condition = res.register(self.expression())
         if res.error: return res
         
         if self.current_token.type != TOKEN_RPAREN:
             return res.failure(InvalidSyntaxError(
                 self.current_token.pos_start, self.current_token.pos_end,
-                "Expected opening ')'"
+                f"Expected opening {')'}"
             ))
                 
         res.register_advancement()
@@ -682,13 +683,13 @@ class Parser:
         res.register_advancement()
         self.advance()
         
-        body = res.register(self.expr())
+        body = res.register(self.expression())
         if  res.error: return res
             
         if self.current_token.type != TOKEN_RCURL:
                 return res.failure(InvalidSyntaxError(
 					self.current_token.pos_start, self.current_token.pos_end,
-					f"Expected opening {'}'}"
+					f"Expected closing {'}'}"
 				))
         res.register_advancement()
         self.advance()
@@ -738,10 +739,10 @@ class Parser:
                 if res.error: return res
                 return res.success(if_expr)
             
-            elif token.matches(TOKEN_KEYWORD, 'for'):
-                for_expr = res.register(self.for_expr())
-                if res.error: return res
-                return res.success(for_expr)
+            # elif token.matches(TOKEN_KEYWORD, 'for'):
+            #     for_expr = res.register(self.for_expr())
+            #     if res.error: return res
+            #     return res.success(for_expr)
             
             elif token.matches(TOKEN_KEYWORD, 'while'):
                 while_expr = res.register(self.while_expr())
@@ -874,7 +875,7 @@ def run(file_name, text):
 
     if error : return None , error
 
-    # print(tokens)
+    print(tokens)
     # Generate AST
     parser  = Parser(tokens)
     ast = parser.parse()
