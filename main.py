@@ -70,6 +70,7 @@ class Position:
 
 TOKEN_INT = 'TOKEN_INT'
 TOKEN_FLOAT = 'TOKEN_FLOAT'
+TOKEN_STRING = 'TOKEN_STRING'
 TOKEN_IDENTIFIER = 'TOKEN_IDENTIFIER'
 TOKEN_KEYWORD = 'TOKEN_KEYWORD'
 TOKEN_PLUS = 'TOKEN_PLUS'
@@ -143,6 +144,8 @@ class Lexer:
                 tokens.append(self.make_number())
             elif self.current_char in LETTERS:
                 tokens.append(self.make_identifier())
+            elif self.current_char == '"':
+                tokens.append(self.make_string())
             elif self.current_char == '+':
                 tokens.append(Token(TOKEN_PLUS, pos_start=self.pos))
                 self.advance()
@@ -212,6 +215,31 @@ class Lexer:
             return Token(TOKEN_INT, int(num_str), post_start, self.pos)
         else:
             return Token(TOKEN_FLOAT, float(num_str), post_start, self.pos)
+        
+    def make_string(self):
+        string = ''
+        pos_start = self.pos.copy()
+        escape_character = False
+        self.advance()
+
+        escape_characters = {
+            'n': '\n',
+            't': '\t'
+        }
+
+        while self.current_char != None and (self.current_char != '"' or escape_character):
+            if escape_character:
+                string += escape_characters.get(self.current_char, self.current_char)
+            else:
+                if self.current_char == '\\':
+                    escape_character = True
+                else:
+                    string += self.current_char
+            self.advance()
+            escape_character = False
+
+        self.advance()
+        return Token(TOKEN_STRING, string, pos_start, self.pos)
     
     def make_identifier(self):
         id_str = ''
@@ -306,6 +334,15 @@ class Lexer:
 ##################################################
 
 class NumberNode:
+    def __init__(self, token):
+        self.token = token
+        self.pos_start = self.token.pos_start
+        self.pos_end = self.token.pos_end
+    
+    def __repr__(self):
+        return f'{self.token}'
+    
+class StringNode:
     def __init__(self, token):
         self.token = token
         self.pos_start = self.token.pos_start
@@ -714,6 +751,11 @@ class Parser:
                 res.register_advancement
                 self.advance()
                 return res.success(NumberNode(token))
+            
+            elif  token.type in (TOKEN_STRING):
+                res.register_advancement
+                self.advance()
+                return res.success(StringNode(token))
             
             elif token.type == TOKEN_LPAREN:
                 res.register_advancement
