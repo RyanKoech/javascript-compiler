@@ -93,12 +93,14 @@ TOKEN_AND = 'TOKEN_AND'
 TOKEN_OR = 'TOKEN_OR'
 TOKEN_NEWLINE = 'TOKEN_NEWLINE'
 TOKEN_EOF = 'TOKEN_EOF'
+TOKEN_COMMA = 'TOKEN_COMMA'
 
 KEYWORDS = [
     'let',
     'if',
     'else',
-    'while'
+    'while',
+    'for'
 ]
 
 class Token:
@@ -173,6 +175,9 @@ class Lexer:
                 self.advance()
             elif self.current_char == '}':
                 tokens.append(Token(TOKEN_RCURL, pos_start=self.pos))
+                self.advance()                
+            elif self.current_char == ',':
+                tokens.append(Token(TOKEN_COMMA, pos_start=self.pos))
                 self.advance()
             elif self.current_char == '!':
                 token, error = self.make_not_equals()
@@ -413,15 +418,19 @@ class IfNode:
 		return f'({self.if_token} {TOKEN_LCURL} {self.cases[0]} {TOKEN_RCURL})'
 
 class ForNode:
-    def __init__(self, var_value_node, start_value_node, end_value_node, step_value_node, body_node):
-        self.var_value_node = var_value_node
-        self.start_value_node = start_value_node
-        self.end_value_node = end_value_node
-        self.step_value_node = step_value_node
+    def __init__(self, expr_node, comp_expr_node, arith_expr_node, body_node):
+        self.for_token = Token(TOKEN_KEYWORD, 'for')
+        self.expr_node = expr_node
+        self.comp_expr_node = comp_expr_node
+        self.arith_expr_node = arith_expr_node
         self.body_node = body_node
         
-        self.pos_start = self.var_name_token.pos_start
+        self.pos_start = self.expr_node.pos_start
         self.pos_end = self.body_node.pos_end
+        
+    def __repr__(self):
+        return f'({self.for_token} {TOKEN_LPAREN} {self.expr_node} {TOKEN_COMMA} {self.comp_expr_node} {TOKEN_COMMA} {self.arith_expr_node} {TOKEN_RPAREN} {TOKEN_LCURL} {self.body_node} {TOKEN_RCURL})'     
+
         
 class WhileNode:
     def __init__(self, condition_node, body_node):
@@ -584,7 +593,7 @@ class Parser:
         if self.current_token.type != TOKEN_LPAREN:
             return res.failure(InvalidSyntaxError(
                 self.current_token.pos_start, self.current_token.pos_end,
-                f"Expected opening '('"
+                f"Expected opening {'('}"
             ))
 		        
         res.register_advancement()
@@ -663,70 +672,47 @@ class Parser:
         
         res.register_advancement()
         self.advance()
-
+		
         if self.current_token.type != TOKEN_LPAREN:
             return res.failure(InvalidSyntaxError(
                 self.current_token.pos_start, self.current_token.pos_end,
                 f"Expected opening {'('}"
             ))
-		        
+
         res.register_advancement()
         self.advance()
 
-        if not self.current_token.matches(TOKEN_KEYWORD, 'let'):
+        expression = res.register(self.expression())
+        if res.error: return res
+        
+        if self.current_token.type != TOKEN_COMMA:
             return res.failure(InvalidSyntaxError(
 				self.current_token.pos_start, self.current_token.pos_end,
-				f"Expected {'let'}"
-			))
-        
-        res.register_advancement()
-        self.advance()
-        
-        if self.current_token.type != TOKEN_IDENTIFIER:
-            return res.failure(InvalidSyntaxError(
-                self.current_token.pos_start, self.current_token.pos_end,
-                f"Expected identifier"
-            ))
-		
-        var_name = self.current_token  
-        res.register_advancement()
-        self.advance()
-        
-        if self.current_token.type != TOKEN_EQ:
-            return res.failure(InvalidSyntaxError(
-				self.current_token.pos_start, self.current_token.pos_end,
-				f"Expected {'='}"
+				f"Expected comma {','}"
 			))
             
         res.register_advancement()
         self.advance()
         
-        start_value = res.register(self.expression())  
+        comparative_expression = res.register(self.comp_expression())  
         if res.error: return res
-        res.register_advancement()
-        self.advance()
-        
-        end_value = res.register(self.comp_expression())  
-        if res.error: return res
-        res.register_advancement()
-        self.advance()
-        
-        ##if self.current_token.matches(TOKEN_KEYWORD, 'step'):
-           ## return res.failure(InvalidSyntaxError(
-				##self.current_token.pos_start, self.current_token.pos_end,
-				##"Expected 'step'"
-			##))
+
+        if self.current_token.type != TOKEN_COMMA:
+            return res.failure(InvalidSyntaxError(
+				self.current_token.pos_start, self.current_token.pos_end,
+				f"Expected character {','}"
+			))
             
-        step_value = res.register(self.expression())  
-        if res.error: return res
-        
         res.register_advancement()
         self.advance()
+                            
+        arithmetic_expression = res.register(self.arith_expression())  
+        if res.error: return res
         
         if self.current_token.type != TOKEN_RPAREN:
             return res.failure(InvalidSyntaxError(
                 self.current_token.pos_start, self.current_token.pos_end,
-                "Expected opening ')'"
+                "Expected closing ')'"
             ))
                 
         res.register_advancement()
@@ -741,18 +727,18 @@ class Parser:
         res.register_advancement()
         self.advance()
             
-        body = res.register(self.expression())
+        body = res.register(self.statements())
         if  res.error: return res
             
         if self.current_token.type != TOKEN_RCURL:
                 return res.failure(InvalidSyntaxError(
 					self.current_token.pos_start, self.current_token.pos_end,
-					f"Expected opening {'}'}"
+					f"Expected closing {'}'}"
 				))
         res.register_advancement()
         self.advance()
             
-        return res.success(ForNode(var_name, start_value, end_value, step_value, body))
+        return res.success(ForNode(expression, comparative_expression, arithmetic_expression, body))
         
     def while_expr(self):
         res = ParseResult()
@@ -760,7 +746,7 @@ class Parser:
         if not self.current_token.matches(TOKEN_KEYWORD, 'while'):
             return res.failure(InvalidSyntaxError(
 				self.current_token.pos_start, self.current_token.pos_end,
-				"Expected 'while'"
+				f"Expected {'while'}"
 			))
         
         res.register_advancement()
@@ -769,7 +755,7 @@ class Parser:
         if self.current_token.type != TOKEN_LPAREN:
             return res.failure(InvalidSyntaxError(
                 self.current_token.pos_start, self.current_token.pos_end,
-                "Expected opening '('"
+                f"Expected opening {'('}"
             ))
 		        
         res.register_advancement()
@@ -781,7 +767,7 @@ class Parser:
         if self.current_token.type != TOKEN_RPAREN:
             return res.failure(InvalidSyntaxError(
                 self.current_token.pos_start, self.current_token.pos_end,
-                f"Expected opening {')'}"
+                f"Expected closing {')'}"
             ))
                 
         res.register_advancement()
@@ -848,7 +834,7 @@ class Parser:
                     return res.failure(
                         InvalidSyntaxError(
                             self.current_token.pos_start, self.current_token.pos_end,
-                            "Expected ')"
+                            f"Expected {')'}"
                         )
                     )
             
@@ -857,10 +843,10 @@ class Parser:
                 if res.error: return res
                 return res.success(if_expr)
             
-            # elif token.matches(TOKEN_KEYWORD, 'for'):
-            #     for_expr = res.register(self.for_expr())
-            #     if res.error: return res
-            #     return res.success(for_expr)
+            elif token.matches(TOKEN_KEYWORD, 'for'):
+                 for_expr = res.register(self.for_expr())
+                 if res.error: return res
+                 return res.success(for_expr)
             
             elif token.matches(TOKEN_KEYWORD, 'while'):
                 while_expr = res.register(self.while_expr())
@@ -993,7 +979,7 @@ def run(file_name, text):
 
     if error : return None , error
 
-    #print(tokens)
+    # print(tokens)
     # Generate AST
     parser  = Parser(tokens)
     ast = parser.parse()

@@ -17,3 +17,9 @@ let counter_2 = 20
 while (counter < 100|| ! counter_2 <=1000) {
   let counting_status = "Still counting"
 }
+
+for (let a = 2, a < 8, a + 1) { 
+  let b = 6; 
+  let a = 5; 
+  3+3
+}
