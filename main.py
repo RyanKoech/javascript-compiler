@@ -261,17 +261,6 @@ class Lexer:
         token_type = TOKEN_KEYWORD if id_str in KEYWORDS else TOKEN_IDENTIFIER
         return Token(token_type, id_str, pos_start, self.pos)
 
-    def make_comma(self):
-        token_type = TOKEN_COMMA
-        pos_start = self.pos.copy()
-        self.advance()
-
-        if self.current_char == ',':
-            self.advance()
-            token_type = TOKEN_COMMA
-
-        return Token(token_type, pos_start=pos_start, pos_end=self.pos)
-
     def make_or(self):
         pos_start = self.pos.copy()
         self.advance()
