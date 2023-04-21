@@ -170,9 +170,8 @@ class Lexer:
                 tokens.append(Token(TOKEN_RCURL, pos_start=self.pos))
                 self.advance()                
             elif self.current_char == ',':
-                token, error = self.make_comma()
-                if error: return [], error
-                tokens.append(token)
+                tokens.append(Token(TOKEN_COMMA, pos_start=self.pos))
+                self.advance()
             elif self.current_char == '!':
                 token, error = self.make_not_equals()
                 if error: return [], error
@@ -389,19 +388,18 @@ class IfNode:
 		return f'{self.if_token} {TOKEN_LCURL} {self.cases[0]} {TOKEN_RCURL}'
 
 class ForNode:
-    def __init__(self, var_value_node, start_value_node, end_value_node, counter_value_node, body_node):
+    def __init__(self, expr_node, comp_expr_node, arith_expr_node, body_node):
         self.for_token = Token(TOKEN_KEYWORD, 'for')
-        self.var_value_node = var_value_node
-        self.start_value_node = start_value_node
-        self.end_value_node = end_value_node
-        self.counter_value_node = step_value_node
+        self.expr_node = expr_node
+        self.comp_expr_node = comp_expr_node
+        self.arith_expr_node = arith_expr_node
         self.body_node = body_node
         
-        self.pos_start = self.var_name_token.pos_start
+        self.pos_start = self.expr_node.pos_start
         self.pos_end = self.body_node.pos_end
         
-        def __repr__(self):
-            return f'({self.for_token} {TOKEN_LPAREN} {self.var_value_node} {self.start_value_node} {TOKEN_COMMA} {self.end_value_node} {TOKEN_COMMA} {self.counter_value_node} {TOKEN_RPAREN} {TOKEN_LCURL} {self.body_node} {TOKEN_RCURL})'     
+    def __repr__(self):
+        return f'({self.for_token} {TOKEN_LPAREN} {self.expr_node} {TOKEN_COMMA} {self.comp_expr_node} {TOKEN_COMMA} {self.arith_expr_node} {TOKEN_RPAREN} {TOKEN_LCURL} {self.body_node} {TOKEN_RCURL})'     
 
         
 class WhileNode:
@@ -580,28 +578,20 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        var_name = self.current_token  
-        res.register_advancement()
-        self.advance()
-                
-        start_value = res.register(self.expression())  
+        expression = res.register(self.expression())
         if res.error: return res
-        res.register_advancement()
-        self.advance()
         
         if self.current_token.type != TOKEN_COMMA:
             return res.failure(InvalidSyntaxError(
 				self.current_token.pos_start, self.current_token.pos_end,
-				f"Expected character {','}"
+				f"Expected comma {','}"
 			))
             
         res.register_advancement()
         self.advance()
         
-        end_value = res.register(self.comp_expression())  
+        comparative_expression = res.register(self.comp_expression())  
         if res.error: return res
-        res.register_advancement()
-        self.advance()
 
         if self.current_token.type != TOKEN_COMMA:
             return res.failure(InvalidSyntaxError(
@@ -612,11 +602,8 @@ class Parser:
         res.register_advancement()
         self.advance()
                             
-        counter_value = res.register(self.expression())  
+        arithmetic_expression = res.register(self.arith_expression())  
         if res.error: return res
-        
-        res.register_advancement()
-        self.advance()
         
         if self.current_token.type != TOKEN_RPAREN:
             return res.failure(InvalidSyntaxError(
@@ -647,7 +634,7 @@ class Parser:
         res.register_advancement()
         self.advance()
             
-        return res.success(ForNode(var_name, start_value, end_value, counter_value, body))
+        return res.success(ForNode(expression, comparative_expression, arithmetic_expression, body))
         
     def while_expr(self):
         res = ParseResult()

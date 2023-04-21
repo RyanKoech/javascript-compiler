@@ -4,9 +4,11 @@
 <comparative-expression> ::= ! <comparative-expression> | <arithmetic-expression> <comparative-operator> <arithmetic-expression>
 <arithmetic-expression> ::= <term> | <arithmetic-expression> <addop> <term>
 <term> ::= <factor> | <term> <mulop> <factor>
-<factor> ::= <number> | '(' <expression> ')' | <addop> <factor> | <identifier> | <if-expression>
+<factor> ::= <number> | '(' <expression> ')' | <addop> <factor> | <identifier> | <atom>
+<atom> ::= <if-expression> | <while-expression> | 
 <if-expression> ::= 'if' '(' <expression> ')' '{' <expression> '}' | 'if' '(' <expression> ')' '{' <expression> '}' 'else''{' <expression> '}' 
-<while-statement> ::= 'while' '(' <expression> ')' '{' <expression> '}'
+<while-expression> ::= 'while' '(' <expression> ')' '{' <expression> '}'
+<for-expression> ::= 'for' '(' <expression> ',' <comparative-expression> ',' <arithmetic-expression> ')' '{' <expression> '}'
 <number> ::= <int>  | <float>
 <keyword> ::= 'let'
 <comparative-operator> ::= '==' | '!=' | '<' | '>' | '<=' | '>='
