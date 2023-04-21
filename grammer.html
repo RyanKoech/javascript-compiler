@@ -5,7 +5,7 @@
 <comparative-expression> ::= ! <comparative-expression> | <arithmetic-expression> <comparative-operator> <arithmetic-expression>
 <arithmetic-expression> ::= <term> | <arithmetic-expression> <addop> <term>
 <term> ::= <factor> | <term> <mulop> <factor>
-<factor> ::= <number> | '(' <expression> ')' | <addop> <factor> | <identifier> | <atom>
+<factor> ::= <number> | '(' <expression> ')' | <addop> <factor> | <identifier> | <string> | <atom>
 <atom> ::= <if-expression> | <while-expression> | <for-expression>
 <if-expression> ::= 'if' '(' <expression> ')' '{' <statement> '}' | 'if' '(' <expression> ')' '{' <statement> '}' 'else''{' <statement> '}' 
 <while-expression> ::= 'while' '(' <expression> ')' '{' <statement> '}'
