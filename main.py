@@ -70,6 +70,7 @@ class Position:
 
 TOKEN_INT = 'TOKEN_INT'
 TOKEN_FLOAT = 'TOKEN_FLOAT'
+TOKEN_STRING = 'TOKEN_STRING'
 TOKEN_IDENTIFIER = 'TOKEN_IDENTIFIER'
 TOKEN_KEYWORD = 'TOKEN_KEYWORD'
 TOKEN_PLUS = 'TOKEN_PLUS'
@@ -90,6 +91,7 @@ TOKEN_RCURL = 'TOKEN_RCURL'
 TOKEN_NOT = 'TOKEN_NOT'
 TOKEN_AND = 'TOKEN_AND'
 TOKEN_OR = 'TOKEN_OR'
+TOKEN_NEWLINE = 'TOKEN_NEWLINE'
 TOKEN_EOF = 'TOKEN_EOF'
 TOKEN_COMMA = 'TOKEN_COMMA'
 
@@ -141,10 +143,15 @@ class Lexer:
         while self.current_char != None:
             if self.current_char in ' \t':
                 self.advance()
+            elif self.current_char in ';\n':
+                tokens.append(Token(TOKEN_NEWLINE, pos_start=self.pos))
+                self.advance()
             elif self.current_char in DIGITS:
                 tokens.append(self.make_number())
             elif self.current_char in LETTERS:
                 tokens.append(self.make_identifier())
+            elif self.current_char == '"':
+                tokens.append(self.make_string())
             elif self.current_char == '+':
                 tokens.append(Token(TOKEN_PLUS, pos_start=self.pos))
                 self.advance()
@@ -170,9 +177,8 @@ class Lexer:
                 tokens.append(Token(TOKEN_RCURL, pos_start=self.pos))
                 self.advance()                
             elif self.current_char == ',':
-                token, error = self.make_comma()
-                if error: return [], error
-                tokens.append(token)
+                tokens.append(Token(TOKEN_COMMA, pos_start=self.pos))
+                self.advance()
             elif self.current_char == '!':
                 token, error = self.make_not_equals()
                 if error: return [], error
@@ -218,6 +224,31 @@ class Lexer:
             return Token(TOKEN_INT, int(num_str), post_start, self.pos)
         else:
             return Token(TOKEN_FLOAT, float(num_str), post_start, self.pos)
+        
+    def make_string(self):
+        string = ''
+        pos_start = self.pos.copy()
+        escape_character = False
+        self.advance()
+
+        escape_characters = {
+            'n': '\n',
+            't': '\t'
+        }
+
+        while self.current_char != None and (self.current_char != '"' or escape_character):
+            if escape_character:
+                string += escape_characters.get(self.current_char, self.current_char)
+            else:
+                if self.current_char == '\\':
+                    escape_character = True
+                else:
+                    string += self.current_char
+            self.advance()
+            escape_character = False
+
+        self.advance()
+        return Token(TOKEN_STRING, string, pos_start, self.pos)
     
     def make_identifier(self):
         id_str = ''
@@ -229,17 +260,6 @@ class Lexer:
 
         token_type = TOKEN_KEYWORD if id_str in KEYWORDS else TOKEN_IDENTIFIER
         return Token(token_type, id_str, pos_start, self.pos)
-
-    def make_comma(self):
-        token_type = TOKEN_COMMA
-        pos_start = self.pos.copy()
-        self.advance()
-
-        if self.current_char == ',':
-            self.advance()
-            token_type = TOKEN_COMMA
-
-        return Token(token_type, pos_start=pos_start, pos_end=self.pos)
 
     def make_or(self):
         pos_start = self.pos.copy()
@@ -331,6 +351,15 @@ class NumberNode:
     def __repr__(self):
         return f'{self.token}'
     
+class StringNode:
+    def __init__(self, token):
+        self.token = token
+        self.pos_start = self.token.pos_start
+        self.pos_end = self.token.pos_end
+    
+    def __repr__(self):
+        return f'{self.token}'
+    
 class VarAccessNode:
     def __init__(self, var_name_token):
         self.var_name_token = var_name_token
@@ -385,23 +414,22 @@ class IfNode:
     
 	def __repr__(self):
 		if self.else_case: 
-			return f'{self.if_token} {TOKEN_LCURL} {self.cases[0]} {TOKEN_RCURL} {self.else_token}  {TOKEN_LCURL} {self.else_case} {TOKEN_RCURL}'
-		return f'{self.if_token} {TOKEN_LCURL} {self.cases[0]} {TOKEN_RCURL}'
+			return f'({self.if_token} {TOKEN_LCURL} {self.cases[0]} {TOKEN_RCURL} {self.else_token}  {TOKEN_LCURL} {self.else_case} {TOKEN_RCURL})'
+		return f'({self.if_token} {TOKEN_LCURL} {self.cases[0]} {TOKEN_RCURL})'
 
 class ForNode:
-    def __init__(self, var_value_node, start_value_node, end_value_node, counter_value_node, body_node):
+    def __init__(self, expr_node, comp_expr_node, arith_expr_node, body_node):
         self.for_token = Token(TOKEN_KEYWORD, 'for')
-        self.var_value_node = var_value_node
-        self.start_value_node = start_value_node
-        self.end_value_node = end_value_node
-        self.counter_value_node = step_value_node
+        self.expr_node = expr_node
+        self.comp_expr_node = comp_expr_node
+        self.arith_expr_node = arith_expr_node
         self.body_node = body_node
         
-        self.pos_start = self.var_name_token.pos_start
+        self.pos_start = self.expr_node.pos_start
         self.pos_end = self.body_node.pos_end
         
-        def __repr__(self):
-            return f'({self.for_token} {TOKEN_LPAREN} {self.var_value_node} {self.start_value_node} {TOKEN_COMMA} {self.end_value_node} {TOKEN_COMMA} {self.counter_value_node} {TOKEN_RPAREN} {TOKEN_LCURL} {self.body_node} {TOKEN_RCURL})'     
+    def __repr__(self):
+        return f'({self.for_token} {TOKEN_LPAREN} {self.expr_node} {TOKEN_COMMA} {self.comp_expr_node} {TOKEN_COMMA} {self.arith_expr_node} {TOKEN_RPAREN} {TOKEN_LCURL} {self.body_node} {TOKEN_RCURL})'     
 
         
 class WhileNode:
@@ -415,6 +443,27 @@ class WhileNode:
 
     def __repr__(self):
         return f'({self.while_token} {TOKEN_LPAREN} {self.condition_node} {TOKEN_RPAREN} {TOKEN_LCURL} {self.body_node} {TOKEN_RCURL})'     
+    
+class ListNode:
+    def __init__(self, element_nodes, pos_start, pos_end):
+        self.element_nodes = element_nodes
+
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+    
+    def to_string(self, nodes_list):
+        size = len(nodes_list)
+        if size <= 0:
+            return ""
+        elif size == 1:
+            return f'{nodes_list[0]}'
+        else:
+            node = nodes_list[0]
+            nodes_list.pop(0)
+            return f'({node} {self.to_string(nodes_list)})'
+
+    def __repr__(self):
+        return self.to_string(self.element_nodes.copy())
 
 
 #######################################
@@ -426,6 +475,7 @@ class ParseResult:
         self.error = None
         self.node = None
         self.advance_count = 0
+        self.to_reverse_count = 0
                 
     def register_advancement(self):
         self.advance_count += 1
@@ -434,6 +484,12 @@ class ParseResult:
             self.advance_count += res.advance_count
             if res.error: self.error = res.error
             return res.node
+
+    def try_register(self, res):
+        if res.error:
+            self.to_reverse_count = res.advance_count
+            return None
+        return self.register(res)
     
     def success(self, node):
             self.node = node
@@ -456,12 +512,20 @@ class Parser:
 
     def advance(self):
         self.token_index += 1
-        if self.token_index < len(self.tokens):
-            self.current_token = self.tokens[self.token_index]
+        self.update_current_token()
         return self.current_token
     
+    def reverse(self, amount=1):
+        self.token_index -= amount
+        self.update_current_token()
+        return self.current_token
+    
+    def update_current_token(self):
+        if self.token_index < len(self.tokens):
+                    self.current_token = self.tokens[self.token_index]
+    
     def parse(self):
-        res = self.expression()
+        res = self.statements()
         if not res.error and self.current_token.type is not TOKEN_EOF:
             return res.failure(
                 InvalidSyntaxError(
@@ -473,6 +537,44 @@ class Parser:
         return res
     
     ###################################
+
+    def statements(self):
+        res = ParseResult()
+        statements = []
+        pos_start = self.current_token.pos_start.copy()
+
+        while self.current_token.type == TOKEN_NEWLINE:
+            res.register_advancement()
+            self.advance()
+
+        statement = res.register(self.expression())
+        if res.error: return res
+        statements.append(statement)
+
+        more_statements = True
+
+        while True:
+            newline_count = 0
+            while self.current_token.type == TOKEN_NEWLINE:
+                res.register_advancement()
+                self.advance()
+                newline_count += 1
+            if newline_count == 0:
+                more_statements = False
+            
+            if not more_statements: break
+            statement = res.try_register(self.expression())
+            if not statement:
+                self.reverse(res.to_reverse_count)
+                more_statements = False
+                continue
+            statements.append(statement)
+
+        return res.success(ListNode(
+        statements,
+        pos_start,
+        self.current_token.pos_end.copy()
+        ))
 
     def if_expr(self):
         res = ParseResult()
@@ -520,9 +622,9 @@ class Parser:
         res.register_advancement()
         self.advance()
         
-        expr = res.register(self.expression())
+        statements = res.register(self.statements())
         if res.error: return res
-        cases.append((condition, expr))
+        cases.append((condition, statements))
         
         if self.current_token.type != TOKEN_RCURL:
             return res.failure(InvalidSyntaxError(
@@ -545,7 +647,7 @@ class Parser:
             res.register_advancement()
             self.advance()
 
-            else_case = res.register(self.expression())
+            else_case = res.register(self.statements())
             if res.error: return res
             
             if self.current_token.type != TOKEN_RCURL:
@@ -580,28 +682,20 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        var_name = self.current_token  
-        res.register_advancement()
-        self.advance()
-                
-        start_value = res.register(self.expression())  
+        expression = res.register(self.expression())
         if res.error: return res
-        res.register_advancement()
-        self.advance()
         
         if self.current_token.type != TOKEN_COMMA:
             return res.failure(InvalidSyntaxError(
 				self.current_token.pos_start, self.current_token.pos_end,
-				f"Expected character {','}"
+				f"Expected comma {','}"
 			))
             
         res.register_advancement()
         self.advance()
         
-        end_value = res.register(self.comp_expression())  
+        comparative_expression = res.register(self.comp_expression())  
         if res.error: return res
-        res.register_advancement()
-        self.advance()
 
         if self.current_token.type != TOKEN_COMMA:
             return res.failure(InvalidSyntaxError(
@@ -612,11 +706,8 @@ class Parser:
         res.register_advancement()
         self.advance()
                             
-        counter_value = res.register(self.expression())  
+        arithmetic_expression = res.register(self.arith_expression())  
         if res.error: return res
-        
-        res.register_advancement()
-        self.advance()
         
         if self.current_token.type != TOKEN_RPAREN:
             return res.failure(InvalidSyntaxError(
@@ -636,7 +727,7 @@ class Parser:
         res.register_advancement()
         self.advance()
             
-        body = res.register(self.expression())
+        body = res.register(self.statements())
         if  res.error: return res
             
         if self.current_token.type != TOKEN_RCURL:
@@ -647,7 +738,7 @@ class Parser:
         res.register_advancement()
         self.advance()
             
-        return res.success(ForNode(var_name, start_value, end_value, counter_value, body))
+        return res.success(ForNode(expression, comparative_expression, arithmetic_expression, body))
         
     def while_expr(self):
         res = ParseResult()
@@ -691,7 +782,7 @@ class Parser:
         res.register_advancement()
         self.advance()
         
-        body = res.register(self.expression())
+        body = res.register(self.statements())
         if  res.error: return res
             
         if self.current_token.type != TOKEN_RCURL:
@@ -724,6 +815,11 @@ class Parser:
                 res.register_advancement
                 self.advance()
                 return res.success(NumberNode(token))
+            
+            elif  token.type in (TOKEN_STRING):
+                res.register_advancement
+                self.advance()
+                return res.success(StringNode(token))
             
             elif token.type == TOKEN_LPAREN:
                 res.register_advancement
@@ -883,7 +979,7 @@ def run(file_name, text):
 
     if error : return None , error
 
-    print(tokens)
+    # print(tokens)
     # Generate AST
     parser  = Parser(tokens)
     ast = parser.parse()

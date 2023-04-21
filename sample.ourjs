@@ -1,0 +1,25 @@
+let groupNumber = 1
+let member1 = "Lynette"
+let member2 = "Ryan"
+let member3 = "Maggie"
+let member4 = "Karl"
+let complex_expression = 1 + 2 * 5
+let complex_expression_2 = (1 - 2 + (1 - 2)) * 3 + (1 / 6)
+
+if (groupNumber == 1 && member1 == "Lynette" ) {
+  let status = "Group1"
+} else {
+  let status = "Not Group1"
+}
+
+let counter = 10
+let counter_2 = 20
+while (counter < 100|| ! counter_2 <=1000) {
+  let counting_status = "Still counting"
+}
+
+for (let a = 2, a < 8, a + 1) { 
+  let b = 6; 
+  let a = 5; 
+  3+3
+}

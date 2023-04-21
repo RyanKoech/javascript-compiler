@@ -1,17 +1,21 @@
 // Supported Language
  
+<statement> ::= <expression> <statement> | <expression>
 <expression> ::= <keyword> <identifier> "=" <arithmetic-expression> |  <comparative-expression> <logical-operator> <comparative-expression>
 <comparative-expression> ::= ! <comparative-expression> | <arithmetic-expression> <comparative-operator> <arithmetic-expression>
 <arithmetic-expression> ::= <term> | <arithmetic-expression> <addop> <term>
 <term> ::= <factor> | <term> <mulop> <factor>
-<factor> ::= <number> | '(' <expression> ')' | <addop> <factor> | <identifier> | <if-expression>
-<if-expression> ::= 'if' '(' <expression> ')' '{' <expression> '}' | 'if' '(' <expression> ')' '{' <expression> '}' 'else''{' <expression> '}' 
-<while-statement> ::= 'while' '(' <expression> ')' '{' <expression> '}'
+<factor> ::= <number> | '(' <expression> ')' | <addop> <factor> | <identifier> | <string> | <atom>
+<atom> ::= <if-expression> | <while-expression> | <for-expression>
+<if-expression> ::= 'if' '(' <expression> ')' '{' <statement> '}' | 'if' '(' <expression> ')' '{' <statement> '}' 'else''{' <statement> '}' 
+<while-expression> ::= 'while' '(' <expression> ')' '{' <statement> '}'
+<for-expression> ::= 'for' '(' <expression> ',' <comparative-expression> ',' <arithmetic-expression> ')' '{' <statement> '}'
 <number> ::= <int>  | <float>
 <keyword> ::= 'let'
 <comparative-operator> ::= '==' | '!=' | '<' | '>' | '<=' | '>='
 <logical-operator> ::= '&&' | '||'
 <identifier> ::= /[a-zA-Z][a-zA-Z]*/
+<string> ::= /('[^']*'|"[^"]*")/
 <float> ::= /[+-]?[0-9]+(\.[0-9]+)?/
 <int> ::= /[+|-]?[0-9][0-9]*/
 <addop> ::= '+' | '-'
