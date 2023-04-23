@@ -94,13 +94,15 @@ TOKEN_OR = 'TOKEN_OR'
 TOKEN_NEWLINE = 'TOKEN_NEWLINE'
 TOKEN_EOF = 'TOKEN_EOF'
 TOKEN_COMMA = 'TOKEN_COMMA'
+TOKEN_ARROW = 'TOKEN_ARROW'
 
 KEYWORDS = [
     'let',
     'if',
     'else',
     'while',
-    'for'
+    'for',
+    'func'
 ]
 
 class Token:
@@ -156,8 +158,7 @@ class Lexer:
                 tokens.append(Token(TOKEN_PLUS, pos_start=self.pos))
                 self.advance()
             elif self.current_char == '-':
-                tokens.append(Token(TOKEN_MINUS, pos_start=self.pos))
-                self.advance()
+                tokens.append(self.make_minus_or_arrow())
             elif self.current_char == '*':
                 tokens.append(Token(TOKEN_MUL, pos_start=self.pos))
                 self.advance()
@@ -284,6 +285,17 @@ class Lexer:
         return None, ExpectedCharError(pos_start, self.pos, "'&' (after '&')")
         
     
+    def make_minus_or_arrow(self):
+        token_type = TOKEN_MINUS
+        pos_start = self.pos.copy()
+        self.advance()
+
+        if self.current_char == '>':
+            self.advance()
+            token_type = TOKEN_ARROW
+
+        return Token(token_type, pos_start=pos_start, pos_end=self.pos)
+
     def make_not_equals(self):
         pos_start = self.pos.copy()
         self.advance()
@@ -444,6 +456,23 @@ class WhileNode:
     def __repr__(self):
         return f'({self.while_token} {TOKEN_LPAREN} {self.condition_node} {TOKEN_RPAREN} {TOKEN_LCURL} {self.body_node} {TOKEN_RCURL})'     
     
+class FuncDefNode:
+    def __init__(self, var_name_token, arg_name_tokens, body_node):
+        self.func_token = Token(TOKEN_KEYWORD, 'func')
+        self.var_name_token = var_name_token
+        self.arg_name_tokens = arg_name_tokens
+        self.body_node = body_node
+
+        if self.var_name_token:
+            self.pos_start = self.var_name_token.pos_start
+        elif len(self.arg_name_tokens) > 0:
+            self.pos_start = self.arg_name_tokens[0].pos_start
+        else:
+            self.pos_start = self.body_node.pos_end
+
+    def __repr__(self):
+        return f'({self.func_token} {self.var_name_token} {TOKEN_LPAREN} {self.arg_name_tokens} {TOKEN_RPAREN} {TOKEN_ARROW} {self.body_node})'
+
 class ListNode:
     def __init__(self, element_nodes, pos_start, pos_end):
         self.element_nodes = element_nodes
@@ -853,6 +882,11 @@ class Parser:
                 if res.error: return res
                 return res.success(while_expr)
             
+            elif token.matches(TOKEN_KEYWORD, 'func'):
+                func_def = res.register(self.func_def())
+                if res.error: return res
+                return res.success(func_def)
+            
             return res.failure(
                 InvalidSyntaxError(token.pos_start, token.pos_end, "Expected number or identifier.")
             )
@@ -923,11 +957,95 @@ class Parser:
             if res.error: 
                 return res.failure(InvalidSyntaxError(
                     self.current_token.pos_start, self.current_token.pos_end,
-                    "Expected let, number or identifier"
+                    "Expected let, if, for, while, func, number or identifier"
                 ))
 
             return res.success(node)
 
+    def func_def(self):
+        res = ParseResult()
+
+        if not self.current_token.matches(TOKEN_KEYWORD, 'func'):
+            return res.failure(InvalidSyntaxError(
+                self.current_token.pos_start, self.current_token.pos_end,
+                f"Expected 'func'"
+            ))
+        
+        res.register_advancement()
+        self.advance()
+
+        if self.current_token.type == TOKEN_IDENTIFIER:
+            var_name_token = self.current_token
+            res.register_advancement()
+            self.advance()
+            if self.current_token.type != TOKEN_LPAREN:
+                return res.failure(InvalidSyntaxError(
+                    self.current_token.pos_start, self.current_token.pos_end,
+                    f"Expected '('"
+                ))
+        else:
+            var_name_token= None
+            if self.current_token.type != TOKEN_LPAREN:
+                return res.failure(InvalidSyntaxError(
+                    self.current_token.pos_start, self.current_token.pos_end,
+                    f"Expected identifier or '('"
+                ))
+            
+        res.register_advancement()
+        self.advance()
+        arg_name_tokens = []
+
+        if self.current_token.type == TOKEN_IDENTIFIER:
+            arg_name_tokens.append(self.current_token)
+            res.register_advancement()
+            self.advance()
+
+            while self.current_token.type == TOKEN_COMMA:
+                res.register_advancement()
+                self.advance()
+
+                if self.current_token.type != TOKEN_IDENTIFIER:
+                    return res.failure(InvalidSyntaxError(
+                        self.current_token.pos_start, self.current_token.pos_end,
+                        f"Expected identifier"
+                    ))
+                arg_name_tokens.append(self.current_token)
+                res.register_advancement()
+                self.advance()
+
+            if self.current_token.type != TOKEN_RPAREN:
+                return res.failure(InvalidSyntaxError(
+                    self.current_token.pos_start, self.current_token.pos_end,
+                    f"Expected ',' or ')'"
+                ))
+            
+        else:
+            if self.current_token.type != TOKEN_RPAREN:
+                return res.failure(InvalidSyntaxError(
+                    self.current_token.pos_start, self.current_token.pos_end,
+                    f"Expected identifier or ')'"
+                ))
+            
+        res.register_advancement()
+        self.advance()
+
+        if self.current_token.type != TOKEN_ARROW:
+            return res.failure(InvalidSyntaxError(
+                self.current_token.pos_start, self.current_token.pos_end,
+                f"Expected '->'"
+            ))
+        
+        res.register_advancement()
+        self.advance()
+        node_to_return = res.register(self.expression())
+        if res.error: return res
+
+        return res.success(FuncDefNode(
+            var_name_token,
+            arg_name_tokens,
+            node_to_return
+        ))
+    
     def binary_op(self, func_a, ops, func_b=None):
 
         if func_b == None:
@@ -950,9 +1068,9 @@ class Parser:
 ##################################################
 
 class SymbolTable:
-    def __init__(self):
+    def __init__(self, parent=None):
         self.symbols = {}
-        self.parent = None
+        self.parent = parent
 
     def get(self, name):
         value = self.symbols.get(name, None)
