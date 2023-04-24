@@ -463,15 +463,15 @@ class FuncDefNode:
         self.arg_name_tokens = arg_name_tokens
         self.body_node = body_node
 
-        if self.var_name_token:
-            self.pos_start = self.var_name_token.pos_start
-        elif len(self.arg_name_tokens) > 0:
+        ##if self.var_name_token:
+            ##self.pos_start = self.var_name_token.pos_start
+        if len(self.arg_name_tokens) > 0:
             self.pos_start = self.arg_name_tokens[0].pos_start
         else:
             self.pos_start = self.body_node.pos_end
 
     def __repr__(self):
-        return f'({self.func_token} {self.var_name_token} {TOKEN_LPAREN} {self.arg_name_tokens} {TOKEN_RPAREN} {TOKEN_ARROW} {self.body_node})'
+        return f'({self.func_token} {self.var_name_token} {TOKEN_LPAREN} {self.arg_name_tokens} {TOKEN_RPAREN} {TOKEN_LCURL} {self.body_node} {TOKEN_RCURL})'
 
 class ListNode:
     def __init__(self, element_nodes, pos_start, pos_end):
@@ -984,12 +984,10 @@ class Parser:
                     f"Expected '('"
                 ))
         else:
-            var_name_token= None
-            if self.current_token.type != TOKEN_LPAREN:
-                return res.failure(InvalidSyntaxError(
-                    self.current_token.pos_start, self.current_token.pos_end,
-                    f"Expected identifier or '('"
-                ))
+            return res.failure(InvalidSyntaxError(
+                self.current_token.pos_start, self.current_token.pos_end,
+                f"Expected identifier"
+            ))
             
         res.register_advancement()
         self.advance()
@@ -1029,16 +1027,25 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        if self.current_token.type != TOKEN_ARROW:
+        if self.current_token.type != TOKEN_LCURL:
             return res.failure(InvalidSyntaxError(
                 self.current_token.pos_start, self.current_token.pos_end,
-                f"Expected '->'"
+                f"Expected {'{'}"
             ))
         
         res.register_advancement()
         self.advance()
-        node_to_return = res.register(self.expression())
+        node_to_return = res.register(self.statements())
         if res.error: return res
+
+        if self.current_token.type != TOKEN_RCURL:
+            return res.failure(InvalidSyntaxError(
+				self.current_token.pos_start, self.current_token.pos_end,
+				f"Expected closing {'}'}"
+			))
+        
+        res.register_advancement()
+        self.advance()
 
         return res.success(FuncDefNode(
             var_name_token,

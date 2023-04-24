@@ -7,7 +7,7 @@
 <term> ::= <factor> | <term> <mulop> <factor>
 <factor> ::= <number> | '(' <expression> ')' | <addop> <factor> | <identifier> | <string> | <atom>
 <atom> ::= <if-expression> | <while-expression> | <for-expression>
-<function-definition> ::= 'func' <identifier>? '(' (<identifier> [',' <identifier>]*)? ')' '-' '>' <expression>
+<function-definition> ::= 'func' <identifier> '(' (<identifier> [',' <identifier>]*)? ')' '{' <statement> '}'
 <if-expression> ::= 'if' '(' <expression> ')' '{' <statement> '}' | 'if' '(' <expression> ')' '{' <statement> '}' 'else''{' <statement> '}' 
 <while-expression> ::= 'while' '(' <expression> ')' '{' <statement> '}'
 <for-expression> ::= 'for' '(' <expression> ',' <comparative-expression> ',' <arithmetic-expression> ')' '{' <statement> '}'
