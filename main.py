@@ -471,6 +471,18 @@ class FuncDefNode:
     def __repr__(self):
         return f'({self.func_token} {self.var_name_token} {TOKEN_LPAREN} {self.arg_name_tokens} {TOKEN_RPAREN} {TOKEN_LCURL} {self.body_node} {TOKEN_RCURL})'
 
+class CallNode:
+    def __init__(self, node_to_call,arg_nodes):
+        self.node_to_call = node_to_call
+        self.arg_nodes = arg_nodes
+
+        self.pos_start = self.node_to_call.pos_start
+
+        if len(self.arg_nodes) > 0:
+            self.pos_end = self.arg_nodes[len(self.arg_nodes) - 1].pos_end
+        else:
+            self.pos_end = self.node_to_call.pos_end
+
 class ListNode:
     def __init__(self, element_nodes, pos_start, pos_end):
         self.element_nodes = element_nodes
@@ -822,6 +834,45 @@ class Parser:
         
         return res.success(WhileNode(condition, body))
         
+    def call(self):
+        res = ParseResult()
+        factor = res.register(self.factor())
+        if res.error: return res
+
+        if self.current_token.type == TOKEN_LPAREN:
+            res.register_advancement()
+            self.advance()
+            arg_nodes = []
+
+            if self.current_token.type == TOKEN_RPAREN:
+                res.register_advancement()
+                self.advance()
+            else:
+                arg_nodes.append(res.register(self.expression()))
+                if res.error:
+                    return res.failure(InvalidSyntaxError(
+                        self.current_token.pos_start, self.current_token.pos_end,
+                        "Expected ')', 'let', 'if', 'for', 'while', 'func', int, float, identifier,  '+', '-', '(' or 'NOT'"
+                    ))
+                
+                while self.current_token.type == TOKEN_COMMA:
+                    res.register_advancement()
+                    self.advance()
+
+                    arg_nodes.append(res.register(self.expression()))
+                    if res.error: return res
+
+                if self.current_token.type != TOKEN_RPAREN:
+                    return res.failure(InvalidSyntaxError(
+                        self.current_token.pos_start, self.current_token.pos_end,
+                        f"Expected ',' or ')'"
+                    ))
+                
+                res.register_advancement()
+                self.advance()
+            return res.success(CallNode(factor, arg_nodes))
+        return res.success(factor)
+    
     def factor(self):
             res = ParseResult()
             token = self.current_token
@@ -886,7 +937,7 @@ class Parser:
                 return res.success(func_def)
             
             return res.failure(
-                InvalidSyntaxError(token.pos_start, token.pos_end, "Expected number or identifier.")
+                InvalidSyntaxError(token.pos_start, token.pos_end, "Expected number, identifier, 'if', 'for', 'while', 'func'")
             )
 
     def term(self):
