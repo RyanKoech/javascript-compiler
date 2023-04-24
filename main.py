@@ -463,8 +463,6 @@ class FuncDefNode:
         self.arg_name_tokens = arg_name_tokens
         self.body_node = body_node
 
-        ##if self.var_name_token:
-            ##self.pos_start = self.var_name_token.pos_start
         if len(self.arg_name_tokens) > 0:
             self.pos_start = self.arg_name_tokens[0].pos_start
         else:
