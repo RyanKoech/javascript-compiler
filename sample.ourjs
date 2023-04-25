@@ -13,9 +13,9 @@ func add(a,b){
 add(1+4, 5)
 
 if (groupNumber == 1 && member1 == "Lynette" ) {
-  print("Group1")
+  log("Group1")
 } else {
-  print("Not Group1")
+  log("Not Group1")
 }
 
 let counter = 10
