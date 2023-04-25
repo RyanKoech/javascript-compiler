@@ -483,6 +483,15 @@ class CallNode:
         else:
             self.pos_end = self.node_to_call.pos_end
 
+    def __repr__(self):
+        arg_name_string = ""
+        for arg_node in self.arg_nodes:
+            if arg_name_string == "":
+                arg_name_string += f'{arg_node}'
+            else:
+                arg_name_string += f'{TOKEN_COMMA} {arg_node}'
+        return f'({self.node_to_call} {TOKEN_LPAREN} {arg_name_string} {TOKEN_RPAREN})'
+
 class ListNode:
     def __init__(self, element_nodes, pos_start, pos_end):
         self.element_nodes = element_nodes
@@ -836,7 +845,7 @@ class Parser:
         
     def call(self):
         res = ParseResult()
-        factor = res.register(self.factor())
+        atom = res.register(self.atom())
         if res.error: return res
 
         if self.current_token.type == TOKEN_LPAREN:
@@ -870,21 +879,14 @@ class Parser:
                 
                 res.register_advancement()
                 self.advance()
-            return res.success(CallNode(factor, arg_nodes))
-        return res.success(factor)
-    
-    def factor(self):
+            return res.success(CallNode(atom, arg_nodes))
+        return res.success(atom)
+
+    def atom(self):
             res = ParseResult()
             token = self.current_token
 
-            if token.type in  (TOKEN_PLUS, TOKEN_MINUS):
-                res.register_advancement
-                self.advance()
-                factor = res.register(self.factor())
-                if res.error: return res
-                return res.success(UnaryOpNode(token, factor))
-            
-            elif token.type == TOKEN_IDENTIFIER:
+            if token.type == TOKEN_IDENTIFIER:
                 res.register_advancement
                 self.advance()
                 return res.success(VarAccessNode(token))
@@ -939,6 +941,19 @@ class Parser:
             return res.failure(
                 InvalidSyntaxError(token.pos_start, token.pos_end, "Expected number, identifier, 'if', 'for', 'while', 'func'")
             )
+    
+    def factor(self):
+            res = ParseResult()
+            token = self.current_token
+
+            if token.type in  (TOKEN_PLUS, TOKEN_MINUS):
+                res.register_advancement
+                self.advance()
+                factor = res.register(self.factor())
+                if res.error: return res
+                return res.success(UnaryOpNode(token, factor))
+            
+            return self.call()
 
     def term(self):
             return self.binary_op(self.factor, (TOKEN_MUL, TOKEN_DIV))
