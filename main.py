@@ -94,7 +94,6 @@ TOKEN_OR = 'TOKEN_OR'
 TOKEN_NEWLINE = 'TOKEN_NEWLINE'
 TOKEN_EOF = 'TOKEN_EOF'
 TOKEN_COMMA = 'TOKEN_COMMA'
-TOKEN_ARROW = 'TOKEN_ARROW'
 
 KEYWORDS = [
     'let',
@@ -158,7 +157,7 @@ class Lexer:
                 tokens.append(Token(TOKEN_PLUS, pos_start=self.pos))
                 self.advance()
             elif self.current_char == '-':
-                tokens.append(self.make_minus_or_arrow())
+                tokens.append(Token(TOKEN_MINUS,pos_start=self.pos))
             elif self.current_char == '*':
                 tokens.append(Token(TOKEN_MUL, pos_start=self.pos))
                 self.advance()
@@ -283,18 +282,6 @@ class Lexer:
 
         self.advance()
         return None, ExpectedCharError(pos_start, self.pos, "'&' (after '&')")
-        
-    
-    def make_minus_or_arrow(self):
-        token_type = TOKEN_MINUS
-        pos_start = self.pos.copy()
-        self.advance()
-
-        if self.current_char == '>':
-            self.advance()
-            token_type = TOKEN_ARROW
-
-        return Token(token_type, pos_start=pos_start, pos_end=self.pos)
 
     def make_not_equals(self):
         pos_start = self.pos.copy()
