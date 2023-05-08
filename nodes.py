@@ -26,7 +26,7 @@ class StringNode:
         return f'{self.token}'
 
     def get_ic(self, get_next_temp, get_current_temp):
-      return f't{get_next_temp()} = {self.token.value}\n'
+      return f't{get_next_temp()} = "{self.token.value}"\n'
     
 class VarAccessNode:
     def __init__(self, var_name_token):
@@ -206,6 +206,9 @@ class FuncDefNode:
     def __repr__(self):
         return f'({self.func_token} {self.var_name_token} {TOKEN_LPAREN} {self.arg_name_tokens} {TOKEN_RPAREN} {TOKEN_LCURL} {self.body_node} {TOKEN_RCURL})'
 
+    def get_ic(self, get_next_temp, get_current_temp):
+      return f'{self.var_name_token.value}:\n{self.body_node.get_ic(get_next_temp, get_current_temp)}ret\n'
+
 class CallNode:
     def __init__(self, node_to_call,arg_nodes):
         self.node_to_call = node_to_call
@@ -226,6 +229,18 @@ class CallNode:
             else:
                 arg_name_string += f'{TOKEN_COMMA} {arg_node}'
         return f'({self.node_to_call} {TOKEN_LPAREN} {arg_name_string} {TOKEN_RPAREN})'
+
+    def get_ic(self, get_next_temp, get_current_temp):
+      arg_nodes_temps = ''
+      arg_nodes_ic = ''
+      for arg_node in self.arg_nodes:
+        arg_nodes_ic += arg_node.get_ic(get_next_temp, get_current_temp)
+        arg_node_temp = get_current_temp()
+        if arg_nodes_temps == '':
+          arg_nodes_temps += f't{arg_node_temp}'
+        else:
+          arg_nodes_temps += f', t{arg_node_temp}'
+      return f'{arg_nodes_ic}call {self.node_to_call.var_name_token.value} {arg_nodes_temps}\n'
 
 class ListNode:
     def __init__(self, element_nodes, pos_start, pos_end):
