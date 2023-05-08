@@ -137,6 +137,13 @@ class IfNode:
         return f'({self.if_token} {TOKEN_LCURL} {self.cases[0]} {TOKEN_RCURL} {self.else_token}  {TOKEN_LCURL} {self.else_case} {TOKEN_RCURL})'
       return f'({self.if_token} {TOKEN_LCURL} {self.cases[0]} {TOKEN_RCURL})'
 
+    def get_ic(self, get_next_temp, get_current_temp):
+      comp_ic = self.cases[0][0].get_ic(get_next_temp, get_current_temp)
+      comp_ic_temp = get_current_temp()
+      label1 = get_next_temp()
+      body_ic = self.cases[0][1].get_ic(get_next_temp, get_current_temp)
+      return f'{comp_ic}if !t{comp_ic_temp} goto L{label1}\n{body_ic}L{label1}:\n'
+
 class ForNode:
     def __init__(self, expr_node, comp_expr_node, arith_expr_node, body_node):
         self.for_token = Token(TOKEN_KEYWORD, 'for')
@@ -175,7 +182,14 @@ class WhileNode:
         self.pos_end = self.body_node.pos_end
 
     def __repr__(self):
-        return f'({self.while_token} {TOKEN_LPAREN} {self.condition_node} {TOKEN_RPAREN} {TOKEN_LCURL} {self.body_node} {TOKEN_RCURL})'     
+        return f'({self.while_token} {TOKEN_LPAREN} {self.condition_node} {TOKEN_RPAREN} {TOKEN_LCURL} {self.body_node} {TOKEN_RCURL})'   
+    
+    def get_ic(self, get_next_temp, get_current_temp):
+      comp_ic = self.condition_node.get_ic(get_next_temp, get_current_temp)
+      comp_ic_temp = get_current_temp()
+      label1 = get_next_temp()
+      body_ic = self.body_node.get_ic(get_next_temp, get_current_temp)
+      return f'{comp_ic}if !t{comp_ic_temp} goto L{label1}\n{body_ic}L{label1}:\n'  
     
 class FuncDefNode:
     def __init__(self, var_name_token, arg_name_tokens, body_node):
