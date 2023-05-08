@@ -18,6 +18,7 @@ class IntermediateCodeGenerator:
         return self.temp_counter - 1
 
     def generate_intermediate_code(self):
+        if self.ast == None: return ''
         return self.ast.get_ic(self.get_next_temp, self.get_current_temp)
         
 
@@ -37,8 +38,16 @@ def run(file_name, text):
     parser  = Parser(tokens)
     ast = parser.parse()
 
-    #IC
-    intermediateCodeGenerator = IntermediateCodeGenerator(ast.node)
-    print(intermediateCodeGenerator.generate_intermediate_code())
+    if ast.error:
+        return None, ast.error
+    
+    print('_______ABSTRACT SYNTAX TREE____________\n')
+    
+    print(ast.node)
 
-    return ast.node, ast.error
+    print('\n_______INTERMEDIATE CODE____________\n')
+
+    # Intermediate Code Generator
+    intermediateCodeGenerator = IntermediateCodeGenerator(ast.node)
+
+    return intermediateCodeGenerator.generate_intermediate_code(), ast.error
