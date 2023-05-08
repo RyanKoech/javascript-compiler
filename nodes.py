@@ -93,6 +93,12 @@ class BinOpNode:
         return '<'
       elif(self.op_token.type == TOKEN_LTE):
         return '<='
+      elif(self.op_token.type == TOKEN_NE):
+        return '!='
+      elif(self.op_token.type == TOKEN_AND):
+        return '&&'
+      elif(self.op_token.type == TOKEN_OR):
+        return '||'
       else:
         return '%'
 
@@ -108,10 +114,12 @@ class UnaryOpNode:
 
     def get_ic(self, get_next_temp, get_current_temp):
       node_ic = self.node.get_ic(get_next_temp, get_current_temp)
+      node_ic_temp = get_current_temp()
       if self.op_token.type == TOKEN_PLUS:
         return f'{node_ic}'
+      elif self.op_token.type == TOKEN_NOT:
+        return f'{node_ic}t{get_next_temp()} = !t{node_ic_temp}\n'
       else: 
-        node_ic_temp = get_current_temp()
         return f'{node_ic}t{get_next_temp()} = uminus t{node_ic_temp}\n'
     
 class IfNode:
