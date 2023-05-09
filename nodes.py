@@ -188,8 +188,9 @@ class WhileNode:
       comp_ic = self.condition_node.get_ic(get_next_temp, get_current_temp)
       comp_ic_temp = get_current_temp()
       label1 = get_next_temp()
+      label2 = get_next_temp()
       body_ic = self.body_node.get_ic(get_next_temp, get_current_temp)
-      return f'{comp_ic}if !t{comp_ic_temp} goto L{label1}\n{body_ic}L{label1}:\n'  
+      return f'{comp_ic}L{label2}:\nif !t{comp_ic_temp} goto L{label1}\n{body_ic}goto L{label2}\nL{label1}:\n'  
     
 class FuncDefNode:
     def __init__(self, var_name_token, arg_name_tokens, body_node):
